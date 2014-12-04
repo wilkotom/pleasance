@@ -1,0 +1,43 @@
+{
+  "certificatePassPhrase": "dWp5ZXliaXY=",
+  "RepositoryURL": "http://lpsdeploy.idx.expedmz.com/",
+  "targetDirectory": "/opt/expedia/tomcat",
+  "hostOverrides": {},
+  "deploymentType": "expediaApplicationFolder",
+  "certificatePath": "certificates",
+  "deploymentDictionary": {
+    "db.eqc.username": "TravECL",
+    "JAVA_OPTS": "-server -Dlog.home=$CATALINA_BASE/logs -Xms{{heap.min}} -Xmx{{heap.max}} -XX:NewSize={{NewSize}} -XX:MaxNewSize={{MaxNewSize}} -XX:SurvivorRatio={{SurvivorRatio}} -XX:PermSize={{PermSize}} -XX:MaxPermSize={{MaxPermSize}} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=true -Dcom.sun.management.jmxremote.password.file=$CATALINA_BASE/conf/jmxremote.password -Dcom.sun.management.jmxremote.access.file=$CATALINA_BASE/conf/jmxremote.access -XX:-UseSplitVerifier",
+    "tomcat.shutdown.port": "301",
+    "CATALINA_HOME": "/opt/apache/tomcat-{{TOMCAT_VERSION}}",
+    "tomcat.jrmp.port": "401",
+    "tomcat.http.port": "101",
+    "tomcat.jmx.port": "401",
+    "MaxNewSize": "{{NewSize}}",
+    "TOMCAT_VERSION": "{{tomcatVersion}}",
+    "tomcatVersion": "6.0.41",
+    "JAVA_HOME": "/usr/java/jdk{{javaVersion}}",
+    "db.eqc.url": "jdbc:sqlserver://NSSQLINTEQC01;database=EQC",
+    "MaxPermSize": "{{PermSize}}",
+    "SurvivorRatio": "10",
+    "tomcat.ajp.port": "201",
+    "ar.port.prefix": "12",
+    "heap.max": "1024m",
+    "PermSize": "64m",
+    "NewSize": "244m",
+    "AR_SPECIFIC_OPTS": "-Dcom.sun.management.jmxremote.port={{ar.port.prefix}}{{tomcat.jmx.port}}",
+    "db.eqc.password": "TESTING",
+    "heap.min": "512m",
+    "db.configurationMaster.url": "jdbc:sqlserver://NSSQLINTCONFIGURATION01;database=Configuration",
+    "JAVA_OPTS_STOP": "-server -Dlog.home=$CATALINA_BASE/logs -Xms{{heap.min}} -Xmx{{heap.max}}",
+    "javaVersion": "1.7.0_45"
+  },
+  "certificateName": "beta01pivs.karmalab.net.pfx",
+  "yumRepositoryPath": "repository",
+  "serviceName": "tomcat",
+  "packagesRequired": [
+    "tomcat-deployit-support",
+    "httpd-config-deployit-eqc"
+  ],
+  "serviceInstance": "eclar-int-01"
+}

@@ -1,0 +1,10 @@
+{
+  "targetDirectory": "/var/www/html",
+  "hostOverrides": {},
+  "deploymentType": "expediaApplicationFolder",
+  "deploymentDictionary": {
+  },
+  "packagesRequired": [
+    "httpd"
+  ]
+}

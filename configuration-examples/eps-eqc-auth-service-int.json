@@ -1,0 +1,32 @@
+{
+  "RepositoryURL": "http://lpsdeploy.idx.expedmz.com/",
+  "certificatePath": "certificates",
+  "deploymentDictionary": {
+    "JAVA_OPTS": "",
+    "PIDFile": "{{targetPath}}/temp/eps-eqc-auth.pid",
+    "SpringProfile": "int",
+    "crypto.namespaceUri": "http://tempuri.org/",
+    "crypto.serviceName": "CryptoSvc",
+    "crypto.servicePass.encrypted": "ENC(I4qeavQzzs16FXIGrCtRXA==)",
+    "crypto.serviceUrl": "https://cryptosvc.karmalab.net/cryptosvc/cryptosvc.asmx",
+    "crypto.serviceUser.encrypted": "ENC(Q1cOtNlcrQfapTSwFlw2Zw==)",
+    "crypto.wsdl": "crypto/cryptosvc.wsdl",
+    "eqcAuth.service.port": "8100",
+    "javaVersion": "1.8.0_25",
+    "lus.serviceUrl": "http://LodgingUserSvc.lisqa7.sb.karmalab.net/LodgingUserSvc/AllInOne",
+    "statsd.host": "statsd-prod.ch.expeso.com",
+    "statsd.port": "8125",
+    "targetPath": "/opt/expedia/eps-eqc-auth"
+  },
+  "deploymentType": "genericFatJar",
+  "hostOverrides": {},
+  "instanceProperties": "http://lpsdeploy/pleasance/v1/packages/instance-properties/1.0",
+  "jarName": "eps-eqc-auth-module.jar",
+  "packagesRequired": [
+    "collectd",
+    "eps-eqc-auth-deployit-support"
+  ],
+  "serviceName": "eps-eqc-auth",
+  "targetDirectory": "/opt/expedia/eps-eqc-auth",
+  "yumRepositoryPath": "repository"
+}
