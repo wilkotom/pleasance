@@ -201,7 +201,9 @@ class packageInstanceVersions:  # Create / Update / Delete given version of a pa
     def DELETE(self, packageName, packageVersion):
         try:
             if pleasance.deletePackageVersion(packageName, packageVersion):
-                return packageName + " has been deleted"
+                return packageName + " version " + packageVersion + " has been deleted.\n"
+            else:
+                return web.forbidden()
         except pleasance.PackageNotFoundError:
             return web.notfound()
 

@@ -117,8 +117,13 @@ class PleasanceShelf:
             raise self.PackageNotFoundError
 
     def deletePackageVersion(self, packageName, packageVersion):
+        promoted = False
         if packageName in self.configurationRepository["packages"]:
             if packageVersion in self.configurationRepository["packages"][packageName].keys():
+                if "promoted" in  self.configurationRepository["packages"][packageName][packageVersion]:
+                    promoted = self.configurationRepository["packages"][packageName][packageVersion]["promoted"]
+                if promoted == True:
+                    return False # Can't delete a promoted build
                 fileName = self.configurationRepository["packages"][packageName][packageVersion]["checksum"]
                 self.os.remove(self.packageRepositoryDirectory + '/' + fileName)  # same note as above re: collisions
                 del self.configurationRepository["packages"][packageName][packageVersion]
