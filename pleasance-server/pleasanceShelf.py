@@ -239,6 +239,7 @@ class PleasanceShelf:
             return True
         else:
             self.configurationRepository["installers"][installer_name] = {}
+            self.configurationRepository.sync()
             return True
 
     def retrieve_installer_instance(self, installer_name, target_os):
