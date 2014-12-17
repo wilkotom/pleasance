@@ -8,21 +8,21 @@ from pleasanceShelf import PleasanceShelf
 
 
 urls = (
-    '/dump', 'dump',
-    '/dump/(.*)$', 'dumpObject',
+    '/dump', 'Dump',
+    '/dump/(.*)$', 'DumpObject',
     '/packages', 'ShowAllPackages',
-    '/packages/([A-Za-z0-9\-_]*)$', 'packageInstances',
-    '/packages/([A-Za-z0-9\-_]*)/(.*)', 'packageInstanceVersions',
-    '/promote/([A-Za-z0-9\-_]*)/(.*)', 'packageVersionPromote',
-    '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'packageVersionUnpromote',
-    '/configuration', 'configuration',
-    '/configuration/([A-Za-z0-9\-_]*)$', 'configurationServiceInstance',  # eg /configuration/eqc-pm-service-int
-    '/configuration/([A-Za-z0-9\-_]*)/(.*)', 'configurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
-    '/bootstrap', 'bootstrap',
-    '/bootstrap/(.*)', 'bootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
-    '/installer', 'installers',
-    '/installer/([A-Za-z0-9\-_]*)$', 'installerInstances',  # /installer/expediaApplicationFolder
-    '/installer/([A-Za-z0-9\-_]*)/(.*)', 'installerInstanceSpecific'  # /installer/expediaApplicationFolder/linux
+    '/packages/([A-Za-z0-9\-_]*)$', 'PackageInstances',
+    '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
+    '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
+    '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
+    '/configuration', 'Configuration',
+    '/configuration/([A-Za-z0-9\-_]*)$', 'ConfigurationServiceInstance',  # eg /configuration/eqc-pm-service-int
+    '/configuration/([A-Za-z0-9\-_]*)/(.*)', 'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
+    '/bootstrap', 'BootStrap',
+    '/bootstrap/(.*)', 'BootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
+    '/installer', 'Installers',
+    '/installer/([A-Za-z0-9\-_]*)$', 'InstallerInstances',  # /installer/expediaApplicationFolder
+    '/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific'  # /installer/expediaApplicationFolder/linux
 )
 
 # Define the application
@@ -33,82 +33,82 @@ app = web.application(urls, globals())
 ###############################################################################
 
 
-class dump:
+class Dump:
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Objects</title></head><body>"
-        for objectName in pleasance.configurationObjects():
+        for objectName in pleasance.configuration_objects():
             response += "<a href='" + web.ctx.home + "/dump/" + objectName + "'>" + objectName + "</a><br/>"
         response += "</body></html>"
         return response
 
 
-class dumpObject:
-    def GET(self, objectName):
-        objectName = str(objectName)
+class DumpObject:
+    def GET(self, object_name):
+        object_name = str(object_name)
         web.header('Content-Type', 'application/json')
-        web.header('X-Object-Name', objectName)
-        return pleasance.dumpConfigurationObject(objectName)
+        web.header('X-Object-Name', object_name)
+        return pleasance.dump_configuration_object(object_name)
 
 
 ##############################################################################
 ####### Configuration - Consists of global settings and per-server ones ######
 ##############################################################################
 
-class configuration:  # List available configurations (aka service instances)
+class Configuration:  # List available configurations (aka service instances)
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
-        for environmentName in pleasance.listObjects("environments"):
-            response += "<a href='" + web.ctx.home + "/configuration/" + environmentName + "'>"
+        for environmentName in pleasance.list_objects("environments"):
+            response += "<a href='" + web.ctx.home + "/Configuration/" + environmentName + "'>"
             response += environmentName + "</a><br/>"
         response += "</body></html>"
         return response
 
 
-class configurationServiceInstance:  # Get / Update / Delete global configuration for a given service instance
-    def GET(self, instanceName):
+class ConfigurationServiceInstance:  # Get / Update / Delete global Configuration for a given service instance
+    def GET(self, instance_name):
         try:
             web.header('Content-Type', 'application/json')
-            return pleasance.retrieveConfiguration(instanceName)
+            return pleasance.retrieve_configuration(instance_name)
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
-    def PUT(self, instanceName):
+    def PUT(self, instance_name):
         try:
-            if pleasance.updateConfiguration(instanceName, web.ctx.env.get('CONTENT_TYPE'), web.data()):
-                return "Updated Environment " + instanceName
+            if pleasance.update_configuration(instance_name, web.ctx.env.get('CONTENT_TYPE'), web.data()):
+                return "Updated Environment " + instance_name
         except pleasance.ConfigurationNotJSONError:
             return web.webapi.UnsupportedMediaType()
         except pleasance.ConfigurationNotValidJSONError:
             return web.badrequest('Could not parse the JSON supplied')
 
-    def DELETE(self, instanceName):
-        return pleasance.deleteConfiguration(instanceName)
+    def DELETE(self, instance_name):
+        return pleasance.delete_configuration(instance_name)
 
 
-class configurationServiceInstanceHosts:  # Get / Update / Delete individual server configuration for a given instance
-    def GET(self, instanceName, nodeIdentifier):
+class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual server Configuration for a given instance
+    def GET(self, instance_name, node_identifier):
         try:
             web.header('Content-Type', 'application/json')
-            return pleasance.retrieveNodeConfiguration(instanceName, nodeIdentifier)
+            return pleasance.retrieve_node_configuration(instance_name, node_identifier)
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
-    def PUT(self, instanceName, nodeIdentifier):
+    def PUT(self, instance_name, node_identifier):
         try:
-            if pleasance.createNodeConfiguration(instanceName, nodeIdentifier, web.ctx.env.get('CONTENT_TYPE'),
-                                                 web.data()):
-                return "Updated node configuration for " + nodeIdentifier + " in " + instanceName
+            if pleasance.create_node_configuration(instance_name, node_identifier, web.ctx.env.get('CONTENT_TYPE'),
+                                                   web.data()):
+                return "Updated node Configuration for " + node_identifier + " in " + instance_name
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
         except pleasance.ConfigurationNotValidJSONError:
             return web.badrequest('Could not parse the JSON supplied')
 
-    def DELETE(self, instanceName, nodeIdentifier):
+    def DELETE(self, instance_name, node_identifier):
         try:
-            if pleasance.deleteNodeConfiguration(instanceName, nodeIdentifier):
-                return "Deleted " + nodeIdentifier + " from " + instanceName
+            if pleasance.delete_node_configuration(instance_name, node_identifier):
+                return "Deleted " + node_identifier + " from " + instance_name
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
@@ -121,56 +121,56 @@ class ShowAllPackages:
     def GET(self):  # List available packages
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
-        for packageName in pleasance.listObjects("packages"):
+        for packageName in pleasance.list_objects("packages"):
             response += "<a href='" + web.ctx.home + "/packages/" + packageName + "'>" + packageName + "</a><br/>"
         response += "</body></html>"
         return response
 
 
-class packageInstances:  # create / delete new package, list available package versions
-    def GET(self, packageName):
-        if packageName in pleasance.listObjects("packages"):
+class PackageInstances:  # create / delete new package, list available package versions
+    def GET(self, package_name):
+        if package_name in pleasance.list_objects("packages"):
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Application Versions</title></head><body>"
-            for packageVersion in pleasance.listPackageVersions(packageName):
-                response += "<a href='" + web.ctx.home + "/packages/" + packageName + "/" \
+            for packageVersion in pleasance.list_package_versions(package_name):
+                response += "<a href='" + web.ctx.home + "/packages/" + package_name + "/" \
                             + packageVersion + "'>" + packageVersion + "</a><br/>"
             response += "</body></html>"
             return response
         else:
             return web.notfound("Application does not exist")
 
-    def PUT(self, packageName):
-        if pleasance.createPackage(packageName):
-            return "Created package " + packageName
+    def PUT(self, package_name):
+        if pleasance.create_package(package_name):
+            return "Created package " + package_name
         else:
             return web.internalerror()
 
-    def DELETE(self, packageName):
+    def DELETE(self, package_name):
         try:
-            if pleasance.deletePackage(packageName):
-                return "Deleted package " + packageName
+            if pleasance.delete_package(package_name):
+                return "Deleted package " + package_name
             else:
                 return web.badrequest()
         except pleasance.PackageNotFoundError:
             return "Package does not exist - no action taken"
 
 
-class packageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
-    def GET(self, packageName, packageVersion):
+class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
+    def GET(self, package_name, package_version):
         try:
-            if pleasance.promotePackageVersion(packageName, packageVersion, True):
-                return "Promoted " + packageName + " version " + packageVersion
+            if pleasance.promote_package_version(package_name, package_version, True):
+                return "Promoted " + package_name + " version " + package_version
         except pleasance.PackageNotFoundError:
             return web.notfound()
         except pleasance.PackageInstanceNotFoundError:
             return web.notfound()
 
 
-class packageVersionUnpromote:  # Flag a package for automatic deletion
+class PackageVersionUnpromote:  # Flag a package for automatic deletion
     def GET(self, packageName, packageVersion):
         try:
-            if pleasance.promotePackageVersion(packageName, packageVersion, False):
+            if pleasance.promote_package_version(packageName, packageVersion, False):
                 return "Unpromoted " + packageName + " version " + packageVersion
         except pleasance.PackageNotFoundError:
             return web.notfound()
@@ -178,30 +178,30 @@ class packageVersionUnpromote:  # Flag a package for automatic deletion
             return web.notfound()
 
 
-class packageInstanceVersions:  # Create / Update / Delete given version of a package
-    def GET(self, packageName, packageVersion):
+class PackageInstanceVersions:  # Create / Update / Delete given version of a package
+    def GET(self, package_name, package_version):
         try:
-            (contentType, packageContents) = pleasance.retrievePackageVersion(packageName, packageVersion)
-            web.header('Content-Type', contentType)
-            return packageContents
+            (content_type, package_contents) = pleasance.retrieve_package_version(package_name, package_version)
+            web.header('Content-Type', content_type)
+            return package_contents
         except pleasance.PackageInstanceNotFoundError:
             return web.notfound()
         except pleasance.CannotUpdatePackageError:
             return web.internalerror()
 
-    def PUT(self, packageName, packageVersion):
-        contentType = ''
+    def PUT(self, package_name, package_version):
+        content_type = ''
         if web.ctx.env.get('CONTENT_TYPE'):
-            contentType = web.ctx.env.get('CONTENT_TYPE')
+            content_type = web.ctx.env.get('CONTENT_TYPE')
         try:
-            return pleasance.updatePackageVersion(packageName, packageVersion, contentType, web.data())
+            return pleasance.update_package_version(package_name, package_version, content_type, web.data())
         except pleasance.PackageNotFoundError:
             return web.notfound()
 
-    def DELETE(self, packageName, packageVersion):
+    def DELETE(self, package_name, package_version):
         try:
-            if pleasance.deletePackageVersion(packageName, packageVersion):
-                return packageName + " version " + packageVersion + " has been deleted.\n"
+            if pleasance.delete_package_version(package_name, package_version):
+                return package_name + " version " + package_version + " has been deleted.\n"
             else:
                 return web.forbidden()
         except pleasance.PackageNotFoundError:
@@ -212,7 +212,7 @@ class packageInstanceVersions:  # Create / Update / Delete given version of a pa
 ################## Bootstrap: Returns the bootstrap script #####################
 ################################################################################
 
-# The bootstrap script fetches the installation script plus configuration for it.
+# The bootstrap script fetches the installation script plus Configuration for it.
 # It doesn't install the application directly. Why? The installation executable
 # could be written in anything (java, shell, chef, puppet...). The bootstrap's
 # job is to invoke that correctly rather than install anything itself.
@@ -220,50 +220,52 @@ class packageInstanceVersions:  # Create / Update / Delete given version of a pa
 #
 # Example URL: # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
 
-class bootstrap:
+class BootStrap:
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Bootstraps</title></head><body>"
-        for osName in pleasance.listObjects("bootstraps"):
+        for osName in pleasance.list_objects("bootstraps"):
             response += "<a href='" + web.ctx.home + "/bootstrap/" + osName + "'>" + osName + "</a><br/>"
         response += "</body></html>"
         return response
 
 
-class bootstrapServer:
+class BootstrapServer:
     def GET(self, context):
-        platform = context
         if context.lstrip('/').split('/').__len__() == 4:
-            (platform, environment, application, applicationVersion) = context.lstrip('/').split('/', 4)
-            configurationUrl = web.ctx.home + "/configuration/" + environment
-            packageUrl = web.ctx.home + "/packages/" + application + "/" + applicationVersion
+            (platform, environment, application, application_version) = context.lstrip('/').split('/', 4)
+            configuration_url = web.ctx.home + "/Configuration/" + environment
+            package_url = web.ctx.home + "/packages/" + application + "/" + application_version
             try:
-                installerUrl = web.ctx.home + "/installer/" + pleasance.getInstallerType(environment) + "/" + platform
+                installer_url = web.ctx.home + "/installer/" + pleasance.get_installer_type(
+                    environment) + "/" + platform
             except pleasance.EnvironmentNotFoundError:
                 return web.notfound()
-        try:
-            (bootStrap, contentType) = pleasance.retrieveBootStrap(platform)
-        except pleasance.bootStrapNotFoundError:
-            return web.notfound()
-        web.header('Content-Type', contentType)
-        if context.lstrip('/').split('/').__len__() == 4:
-            bootStrap = bootStrap.replace("{{packageURL}}", packageUrl)
-            bootStrap = bootStrap.replace("{{environmentConfiguration}}", configurationUrl)
-            bootStrap = bootStrap.replace("{{installerPath}}", installerUrl)
-            bootStrap = bootStrap.replace("{{packageVersion}}", applicationVersion)
-            bootStrap = bootStrap.replace("{{packageName}}", application)
-        web.header('Content-Type', contentType)
-        return bootStrap
-
+            try:
+                (bootstrap, content_type) = pleasance.retrieve_bootstrap(platform)
+            except pleasance.BootStrapNotFoundError:
+                return web.notfound()
+            bootstrap = bootstrap.replace("{{packageURL}}", package_url)
+            bootstrap = bootstrap.replace("{{environmentConfiguration}}", configuration_url)
+            bootstrap = bootstrap.replace("{{installerPath}}", installer_url)
+            bootstrap = bootstrap.replace("{{packageVersion}}", application_version)
+            bootstrap = bootstrap.replace("{{packageName}}", application)
+        else:
+            try:
+                (bootstrap, content_type) = pleasance.retrieve_bootstrap(context)
+            except pleasance.BootStrapNotFoundError:
+                return web.notfound()
+        web.header('Content-Type', content_type)
+        return bootstrap
 
     def PUT(self, context):
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
-            contentType = ""
+            content_type = ""
             if web.ctx.env.get('CONTENT_TYPE'):
-                contentType = web.ctx.env.get('CONTENT_TYPE')
-            if pleasance.storeBootstrap(context, contentType, web.data()):
+                content_type = web.ctx.env.get('CONTENT_TYPE')
+            if pleasance.store_bootstrap(context, content_type, web.data()):
                 return "Created bootstrap " + context
             raise Exception
 
@@ -271,7 +273,7 @@ class bootstrapServer:
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
-            if pleasance.deleteBootstrap(context):
+            if pleasance.delete_bootstrap(context):
                 return "Deleted Bootstrap " + context
 
 
@@ -279,61 +281,59 @@ class bootstrapServer:
 ############# Installers: container-specific installers go here ################
 ################################################################################
 
-class installers:
+class Installers:
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Installers</title></head><body>"
-        for installerName in pleasance.listObjects("installers"):
-            response += "<a href='" + web.ctx.home + "/installer/" + installerName + "'>" + installerName + "</a><br/>"
+        for installer_name in pleasance.list_objects("installers"):
+            response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + installer_name + "</a><br/>"
         response += "</body></html>"
         return response
 
 
-class installerInstances:
-    def GET(self, installerName):
+class InstallerInstances:
+    def GET(self, installer_name):
         try:
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Installers</title></head><body>"
-            for platformName in pleasance.listInstallerInstances(installerName):
-                response += "<a href='" + web.ctx.home + "/installer/" + installerName + "/" + platformName + "'>" + \
+            for platformName in pleasance.list_installer_instances(installer_name):
+                response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "/" + platformName + "'>" + \
                             platformName + "</a><br/>"
             response += "</body></html>"
             return response
         except pleasance.InstallerNotFoundError:
             return web.notfound()
 
-    def PUT(self, installerName):
-        if pleasance.createInstaller(installerName):
-            return "Created installer " + installerName
+    def PUT(self, installer_name):
+        if pleasance.create_installer(installer_name):
+            return "Created installer " + installer_name
 
 
-class installerInstanceSpecific:
-    def GET(self, installerName, targetOS):
+class InstallerInstanceSpecific:
+    def GET(self, installer_name, target_os):
         try:
-            (contentType, installerData) = pleasance.retrieveInstallerInstance(installerName, targetOS)
-            web.header('Content-Type', contentType)
-            return installerData
+            (content_type, installer_data) = pleasance.retrieve_installer_instance(installer_name, target_os)
+            web.header('Content-Type', content_type)
+            return installer_data
         except pleasance.InstallerInstanceNotFoundError:
             return web.notfound()
 
-    def PUT(self, installerName, targetOS):
-        contentType = ''
+    def PUT(self, installer_name, target_os):
+        content_type = ''
         if web.ctx.env.get('CONTENT_TYPE'):
-            contentType = web.ctx.env.get('CONTENT_TYPE')
+            content_type = web.ctx.env.get('CONTENT_TYPE')
         try:
-            if pleasance.updateInstallerSpecific(installerName, targetOS, contentType, web.data()):
-                return "Created Installer for " + installerName + " on platform: " + targetOS
+            if pleasance.update_installer_specific(installer_name, target_os, content_type, web.data()):
+                return "Created Installer for " + installer_name + " on platform: " + target_os
         except pleasance.InstallerNotFoundError:
             return web.notfound()
 
-    def DELETE(self, installerName, targetOS):
+    def DELETE(self, installer_name, target_os):
         try:
-            if pleasance.deleteInstallerSpecific(installerName, targetOS):
-                return "Deleted Installer for " + installerName + " on platform: " + targetOS
+            if pleasance.delete_installer_specific(installer_name, target_os):
+                return "Deleted Installer for " + installer_name + " on platform: " + target_os
         except pleasance.InstallerNotFoundError:
             return web.notfound()
-
-
 
 ################################################################################
 ########################### Startup Here #######################################
@@ -341,9 +341,9 @@ class installerInstanceSpecific:
 
 ############ Settings here  ###################
 
-packageRepositoryLocation = "./packages"
-configurationRepositoryLocation = "./configuration"
-pleasance = PleasanceShelf('./packages', './configuration')
+package_repository_location = "./packages"
+configuration_repository_location = "./Configuration"
+pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
 
 ############### End Settings ##################
 
