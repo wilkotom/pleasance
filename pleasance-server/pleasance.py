@@ -168,10 +168,10 @@ class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned u
 
 
 class PackageVersionUnpromote:  # Flag a package for automatic deletion
-    def GET(self, packageName, packageVersion):
+    def GET(self, package_name, package_version):
         try:
-            if pleasance.promote_package_version(packageName, packageVersion, False):
-                return "Unpromoted " + packageName + " version " + packageVersion
+            if pleasance.promote_package_version(package_name, package_version, False):
+                return "Unpromoted " + package_name + " version " + package_version
         except pleasance.PackageNotFoundError:
             return web.notfound()
         except pleasance.PackageInstanceNotFoundError:
@@ -239,10 +239,9 @@ class BootstrapServer:
             try:
                 installer_url = web.ctx.home + "/installer/" + pleasance.get_installer_type(
                     environment) + "/" + platform
+                (bootstrap, content_type) = pleasance.retrieve_bootstrap(platform)
             except pleasance.EnvironmentNotFoundError:
                 return web.notfound()
-            try:
-                (bootstrap, content_type) = pleasance.retrieve_bootstrap(platform)
             except pleasance.BootStrapNotFoundError:
                 return web.notfound()
             bootstrap = bootstrap.replace("{{packageURL}}", package_url)
