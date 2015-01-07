@@ -69,6 +69,19 @@ class PleasanceShelf:
         else:
             raise self.PackageInstanceNotFoundError
 
+    def retrieve_package_details(self, package_name, package_version):
+        if package_name in self.configurationRepository["packages"] and \
+                package_version in self.configurationRepository["packages"][
+                package_name]:
+            # If the package has no datestamp / promotion flag, create them
+            if "promoted" not in self.configurationRepository["packages"][package_name]:
+                self.configurationRepository["packages"][package_name]["promoted"] = False
+            if "created" not in self.configurationRepository["packages"][package_name]:
+                self.configurationRepository["packages"][package_name]["created"] = 0.0
+            return self.json.dumps(self.configurationRepository["packages"][package_name][package_version])
+        else:
+            raise self.PackageInstanceNotFoundError
+
     def update_package_version(self, package_name, package_version, content_type, package_data):
         if package_name in self.configurationRepository["packages"]:
             filename = self.hashlib.sha1(package_data).hexdigest()

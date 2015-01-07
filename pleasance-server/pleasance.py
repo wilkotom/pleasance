@@ -10,9 +10,10 @@ from pleasanceShelf import PleasanceShelf
 urls = (
     '/dump', 'Dump',
     '/dump/(.*)$', 'DumpObject',
-    '/packages', 'ShowAllPackages',
-    '/packages/([A-Za-z0-9\-_]*)$', 'PackageInstances',
+    '/package(s|info)', 'ShowAllPackages',
+    '/package(s|info)/([A-Za-z0-9\-_]*)$', 'PackageInstances',
     '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
+    '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
     '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
     '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
     '/configuration', 'Configuration',
@@ -118,35 +119,42 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
 ################################################################################
 
 class ShowAllPackages:
-    def GET(self):  # List available packages
+    def GET(self, path_identifier):  # List available packages
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
         for packageName in pleasance.list_objects("packages"):
-            response += "<a href='" + web.ctx.home + "/packages/" + packageName + "'>" + packageName + "</a><br/>"
+            response += "<a href='" + web.ctx.home + "/package" + path_identifier + \
+                        "/" + packageName + "'>" + packageName + "</a><br/>"
         response += "</body></html>"
         return response
 
 
 class PackageInstances:  # create / delete new package, list available package versions
-    def GET(self, package_name):
+    def GET(self, path_identifier, package_name):
         if package_name in pleasance.list_objects("packages"):
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Application Versions</title></head><body>"
             for packageVersion in pleasance.list_package_versions(package_name):
-                response += "<a href='" + web.ctx.home + "/packages/" + package_name + "/" \
+                response += "<a href='" + web.ctx.home + "/package" + path_identifier + "/" + package_name + "/" \
                             + packageVersion + "'>" + packageVersion + "</a><br/>"
             response += "</body></html>"
             return response
         else:
             return web.notfound("Application does not exist")
 
-    def PUT(self, package_name):
+    def PUT(self, path_identifier, package_name):
+        if path_identifier == 'info':
+            # Can't modify objects in the /packageinfo path
+            return web.badrequest()
         if pleasance.create_package(package_name):
             return "Created package " + package_name
         else:
             return web.internalerror()
 
-    def DELETE(self, package_name):
+    def DELETE(self, path_identifier, package_name):
+        if path_identifier == 'info':
+            # Can't modify objects in the /packageinfo path
+            return web.badrequest()
         try:
             if pleasance.delete_package(package_name):
                 return "Deleted package " + package_name
@@ -205,6 +213,15 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
             else:
                 return web.forbidden()
         except pleasance.PackageNotFoundError:
+            return web.notfound()
+
+class PackageVersionInfo:
+    def GET(self, package_name, package_version):
+        try:
+            package_details = pleasance.retrieve_package_details(package_name, package_version)
+            web.header('Content-Type', 'application/json')
+            return package_details
+        except pleasance.PackageInstanceNotFoundError:
             return web.notfound()
 
 
