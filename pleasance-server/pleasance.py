@@ -145,7 +145,7 @@ class PackageInstances:  # create / delete new package, list available package v
     def PUT(self, path_identifier, package_name):
         if path_identifier == 'info':
             # Can't modify objects in the /packageinfo path
-            return web.badrequest()
+            return web.nomethod()
         if pleasance.create_package(package_name):
             return "Created package " + package_name
         else:
@@ -154,7 +154,7 @@ class PackageInstances:  # create / delete new package, list available package v
     def DELETE(self, path_identifier, package_name):
         if path_identifier == 'info':
             # Can't modify objects in the /packageinfo path
-            return web.badrequest()
+            return web.nomethod()
         try:
             if pleasance.delete_package(package_name):
                 return "Deleted package " + package_name
