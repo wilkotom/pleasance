@@ -61,7 +61,7 @@ class Configuration:  # List available configurations (aka service instances)
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
         for environmentName in pleasance.list_objects("environments"):
-            response += "<a href='" + web.ctx.home + "/Configuration/" + environmentName + "'>"
+            response += "<a href='" + web.ctx.home + "/configuration/" + environmentName + "'>"
             response += environmentName + "</a><br/>"
         response += "</body></html>"
         return response
@@ -251,7 +251,7 @@ class BootstrapServer:
     def GET(self, context):
         if context.lstrip('/').split('/').__len__() == 4:
             (platform, environment, application, application_version) = context.lstrip('/').split('/', 4)
-            configuration_url = web.ctx.home + "/Configuration/" + environment
+            configuration_url = web.ctx.home + "/configuration/" + environment
             package_url = web.ctx.home + "/packages/" + application + "/" + application_version
             try:
                 installer_url = web.ctx.home + "/installer/" + pleasance.get_installer_type(
