@@ -74,10 +74,10 @@ class PleasanceShelf:
                 package_version in self.configurationRepository["packages"][
                 package_name]:
             # If the package has no datestamp / promotion flag, create them
-            if "promoted" not in self.configurationRepository["packages"][package_name]:
-                self.configurationRepository["packages"][package_name]["promoted"] = False
-            if "created" not in self.configurationRepository["packages"][package_name]:
-                self.configurationRepository["packages"][package_name]["created"] = 0.0
+            if "promoted" not in self.configurationRepository["packages"][package_name][package_version]:
+                self.configurationRepository["packages"][package_name][package_version]["promoted"] = False
+            if "created" not in self.configurationRepository["packages"][package_name][package_version]:
+                self.configurationRepository["packages"][package_name][package_version]["created"] = 0.0
             return self.json.dumps(self.configurationRepository["packages"][package_name][package_version])
         else:
             raise self.PackageInstanceNotFoundError
