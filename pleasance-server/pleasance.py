@@ -191,6 +191,7 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
         try:
             (content_type, package_contents) = pleasance.retrieve_package_version(package_name, package_version)
             web.header('Content-Type', content_type)
+            web.header('Content-Length', len(package_contents))
             return package_contents
         except pleasance.PackageInstanceNotFoundError:
             return web.notfound()
