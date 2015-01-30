@@ -12,14 +12,14 @@ if [ ${UID} == 0 ]; then
 	./installer
 	exitcode=$?
 	mkdir -p /var/db/pleasance
-	echo "{{packageVersion}}" > /var/db/pleasance/{{packageName}}.version
+	[ ${exitcode} == 0 ] && echo "{{packageVersion}}" > /var/db/pleasance/{{packageName}}.version
 	cd
 	rm -rf ${workdir}
 else
 	sudo ./installer
 	exitcode=$?
 	sudo mkdir -p /var/db/pleasance
-	echo "{{packageVersion}}" | sudo tee /var/db/pleasance/{{packageName}}.version >/dev/null
+	[ ${exitcode} == 0 ] && echo "{{packageVersion}}" | sudo tee /var/db/pleasance/{{packageName}}.version >/dev/null
 	cd
 	sudo rm -rf ${workdir}
 fi
