@@ -345,8 +345,12 @@ class PleasanceMongo:
         if installer is not None:
             self.installers.remove({'name': installer_name, "platform": target_os})
             # Delete it
+            return True
         else:
-            raise self.InstallerNotFoundError
+            if self.installers.find_one({'name': installer_name}) is not None:
+                return True
+            else:
+                raise self.InstallerNotFoundError
 
     class PackageNotFoundError(Exception):
         """The package specified does not exist"""
