@@ -15,8 +15,8 @@ class PleasanceMongo:
     from pymongo import MongoClient
     import gridfs
 
-    def __init__(self):
-        self.mongo_database = self.MongoClient().pleasance
+    def __init__(self, mongo_server, mongo_port):
+        self.mongo_database = self.MongoClient(mongo_server, mongo_port).pleasance
         self.packages = self.mongo_database.packages
         self.environments = self.mongo_database.environments
         self.bootstraps = self.mongo_database.bootstraps
@@ -45,6 +45,7 @@ class PleasanceMongo:
         elif object_name == 'installers':
             for result in self.installers.find():
                 del result['_id']
+                del result['file_id']
                 name = result['name']
                 platform = result['platform']
                 del result['name']
