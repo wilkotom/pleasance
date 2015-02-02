@@ -171,7 +171,7 @@ class PleasanceMongo:
             del package['version']
             del package['file_id']  # Don't expose internal data
             del package['_id']
-            return package
+            return self.json.dumps(package)
         else:
             raise self.PackageInstanceNotFoundError
 
