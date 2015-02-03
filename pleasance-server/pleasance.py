@@ -4,7 +4,10 @@
 __author__ = 'twilkinson'
 
 import web
+import sys
 from pleasanceShelf import PleasanceShelf
+from PleasanceMongoDB import PleasanceMongo
+
 
 
 urls = (
@@ -23,16 +26,31 @@ urls = (
     '/bootstrap/(.*)', 'BootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
     '/installer', 'Installers',
     '/installer/([A-Za-z0-9\-_]*)$', 'InstallerInstances',  # /installer/expediaApplicationFolder
-    '/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific'  # /installer/expediaApplicationFolder/linux
+    '/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific',  # /installer/expediaApplicationFolder/linux
+    '/(.*)', 'PrintBadURL'
 )
 
 # Define the application
 app = web.application(urls, globals())
 
+
 ###############################################################################
-###  Dump Class. Throws whatever is in memory to the browser, for debugging ###
+# If we get a request for an object we don't recognise, throw some debugging
+# data back
 ###############################################################################
 
+class PrintBadURL:
+    def GET(self, uri):
+        output = 'Calling URI:' + uri + '\n'
+        for setting in web.ctx.env:
+            output = output + setting + ' ' + str(web.ctx.env[setting]) + '\n'
+        output = output + "Path: " + web.ctx.path + " Homepath: " + web.ctx.homepath + " Fullpath: " + web.ctx.fullpath
+        return output
+
+
+###############################################################################
+#  Dump Class. Throws whatever is in memory to the browser, for debugging ###
+###############################################################################
 
 class Dump:
     def GET(self):
@@ -46,6 +64,7 @@ class Dump:
 
 class DumpObject:
     def GET(self, object_name):
+        sys.stderr.write("Dumping " + object_name)
         object_name = str(object_name)
         web.header('Content-Type', 'application/json')
         web.header('X-Object-Name', object_name)
@@ -53,14 +72,14 @@ class DumpObject:
 
 
 ##############################################################################
-####### Configuration - Consists of global settings and per-server ones ######
+# Configuration - Consists of global settings and per-server ones
 ##############################################################################
 
 class Configuration:  # List available configurations (aka service instances)
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
-        for environmentName in pleasance.list_objects("environments"):
+        for environmentName in sorted(pleasance.list_objects("environments")):
             response += "<a href='" + web.ctx.home + "/configuration/" + environmentName + "'>"
             response += environmentName + "</a><br/>"
         response += "</body></html>"
@@ -115,14 +134,14 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
 
 
 ################################################################################
-######## Packages: Store different versions of a deployment package ############
+# Packages: Store different versions of a deployment package
 ################################################################################
 
 class ShowAllPackages:
     def GET(self, path_identifier):  # List available packages
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Applications</title></head><body>"
-        for packageName in pleasance.list_objects("packages"):
+        for packageName in sorted(pleasance.list_objects("packages")):
             response += "<a href='" + web.ctx.home + "/package" + path_identifier + \
                         "/" + packageName + "'>" + packageName + "</a><br/>"
         response += "</body></html>"
@@ -134,7 +153,7 @@ class PackageInstances:  # create / delete new package, list available package v
         if package_name in pleasance.list_objects("packages"):
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Application Versions</title></head><body>"
-            for packageVersion in pleasance.list_package_versions(package_name):
+            for packageVersion in sorted(pleasance.list_package_versions(package_name)):
                 response += "<a href='" + web.ctx.home + "/package" + path_identifier + "/" + package_name + "/" \
                             + packageVersion + "'>" + packageVersion + "</a><br/>"
             response += "</body></html>"
@@ -227,7 +246,7 @@ class PackageVersionInfo:
 
 
 ################################################################################
-################## Bootstrap: Returns the bootstrap script #####################
+# Bootstrap: Returns the bootstrap script
 ################################################################################
 
 # The bootstrap script fetches the installation script plus Configuration for it.
@@ -242,7 +261,7 @@ class BootStrap:
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Bootstraps</title></head><body>"
-        for osName in pleasance.list_objects("bootstraps"):
+        for osName in sorted(pleasance.list_objects("bootstraps")):
             response += "<a href='" + web.ctx.home + "/bootstrap/" + osName + "'>" + osName + "</a><br/>"
         response += "</body></html>"
         return response
@@ -295,14 +314,14 @@ class BootstrapServer:
 
 
 ################################################################################
-############# Installers: container-specific installers go here ################
+# Installers: container-specific installers go here
 ################################################################################
 
 class Installers:
     def GET(self):
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Installers</title></head><body>"
-        for installer_name in pleasance.list_objects("installers"):
+        for installer_name in sorted(pleasance.list_objects("installers")):
             response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + installer_name + "</a><br/>"
         response += "</body></html>"
         return response
@@ -313,7 +332,7 @@ class InstallerInstances:
         try:
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Installers</title></head><body>"
-            for platformName in pleasance.list_installer_instances(installer_name):
+            for platformName in sorted(pleasance.list_installer_instances(installer_name)):
                 response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "/" + platformName + "'>" + \
                             platformName + "</a><br/>"
             response += "</body></html>"
@@ -353,14 +372,16 @@ class InstallerInstanceSpecific:
             return web.notfound()
 
 ################################################################################
-########################### Startup Here #######################################
+# Startup Here
 ################################################################################
 
 ############ Settings here  ###################
 
-package_repository_location = "./packages"
-configuration_repository_location = "./Configuration"
-pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
+#package_repository_location = "./packages"
+#configuration_repository_location = "./Configuration"
+#pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
+pleasance = PleasanceMongo('chsxplsnce001.idx.expedmz.com',27017)
+
 
 ############### End Settings ##################
 
