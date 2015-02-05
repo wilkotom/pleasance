@@ -4,7 +4,6 @@
 __author__ = 'twilkinson'
 
 import web
-import sys
 from pleasanceShelf import PleasanceShelf
 from PleasanceMongoDB import PleasanceMongo
 
@@ -64,7 +63,6 @@ class Dump:
 
 class DumpObject:
     def GET(self, object_name):
-        sys.stderr.write("Dumping " + object_name)
         object_name = str(object_name)
         web.header('Content-Type', 'application/json')
         web.header('X-Object-Name', object_name)
