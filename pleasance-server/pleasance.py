@@ -5,6 +5,7 @@ __author__ = 'twilkinson'
 
 import web
 from pleasanceShelf import PleasanceShelf
+import json
 from PleasanceMongoDB import PleasanceMongo
 
 
@@ -75,12 +76,17 @@ class DumpObject:
 
 class Configuration:  # List available configurations (aka service instances)
     def GET(self):
-        web.header('Content-Type', 'text/html')
-        response = "<html><head><title>Available Applications</title></head><body>"
-        for environmentName in sorted(pleasance.list_objects("environments")):
-            response += "<a href='" + web.ctx.home + "/configuration/" + environmentName + "'>"
-            response += environmentName + "</a><br/>"
-        response += "</body></html>"
+        response = ''
+        if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+            web.header('Content-Type', 'application/json')
+            response = json.dumps(sorted(pleasance.list_objects("environments")))
+        else:
+            web.header('Content-Type', 'text/html')
+            response = "<html><head><title>Available Applications</title></head><body>"
+            for environmentName in sorted(pleasance.list_objects("environments")):
+                response += "<a href='" + web.ctx.home + "/configuration/" + environmentName + "'>"
+                response += environmentName + "</a><br/>"
+            response += "</body></html>"
         return response
 
 
@@ -137,24 +143,33 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
 
 class ShowAllPackages:
     def GET(self, path_identifier):  # List available packages
-        web.header('Content-Type', 'text/html')
-        response = "<html><head><title>Available Applications</title></head><body>"
-        for packageName in sorted(pleasance.list_objects("packages")):
-            response += "<a href='" + web.ctx.home + "/package" + path_identifier + \
-                        "/" + packageName + "'>" + packageName + "</a><br/>"
-        response += "</body></html>"
+        response = ''
+        if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+            web.header('Content-Type','application/json')
+            response = json.dumps(sorted(pleasance.list_objects("packages")))
+        else:
+            web.header('Content-Type', 'text/html')
+            response = "<html><head><title>Available Applications</title></head><body>"
+            for packageName in sorted(pleasance.list_objects("packages")):
+                response += "<a href='" + web.ctx.home + "/package" + path_identifier + \
+                            "/" + packageName + "'>" + packageName + "</a><br/>"
+            response += "</body></html>"
         return response
 
 
 class PackageInstances:  # create / delete new package, list available package versions
     def GET(self, path_identifier, package_name):
         if package_name in pleasance.list_objects("packages"):
-            web.header('Content-Type', 'text/html')
-            response = "<html><head><title>Available Application Versions</title></head><body>"
-            for packageVersion in sorted(pleasance.list_package_versions(package_name)):
-                response += "<a href='" + web.ctx.home + "/package" + path_identifier + "/" + package_name + "/" \
-                            + packageVersion + "'>" + packageVersion + "</a><br/>"
-            response += "</body></html>"
+            if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+                web.header('Content-Type', 'application/json')
+                response = json.dumps(pleasance.list_package_versions(package_name))
+            else:
+                web.header('Content-Type', 'text/html')
+                response = "<html><head><title>Available Application Versions</title></head><body>"
+                for packageVersion in sorted(pleasance.list_package_versions(package_name)):
+                    response += "<a href='" + web.ctx.home + "/package" + path_identifier + "/" + package_name + "/" \
+                                + packageVersion + "'>" + packageVersion + "</a><br/>"
+                response += "</body></html>"
             return response
         else:
             return web.notfound("Application does not exist")
@@ -257,11 +272,16 @@ class PackageVersionInfo:
 
 class BootStrap:
     def GET(self):
-        web.header('Content-Type', 'text/html')
-        response = "<html><head><title>Available Bootstraps</title></head><body>"
-        for osName in sorted(pleasance.list_objects("bootstraps")):
-            response += "<a href='" + web.ctx.home + "/bootstrap/" + osName + "'>" + osName + "</a><br/>"
-        response += "</body></html>"
+        response = ''
+        if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+            web.header('Content-Type', 'application/json')
+            response = json.dumps(sorted(pleasance.list_objects("bootstraps")))
+        else:
+            web.header('Content-Type', 'text/html')
+            response = "<html><head><title>Available Bootstraps</title></head><body>"
+            for osName in sorted(pleasance.list_objects("bootstraps")):
+                response += "<a href='" + web.ctx.home + "/bootstrap/" + osName + "'>" + osName + "</a><br/>"
+            response += "</body></html>"
         return response
 
 
@@ -317,23 +337,33 @@ class BootstrapServer:
 
 class Installers:
     def GET(self):
-        web.header('Content-Type', 'text/html')
-        response = "<html><head><title>Available Installers</title></head><body>"
-        for installer_name in sorted(pleasance.list_objects("installers")):
-            response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + installer_name + "</a><br/>"
-        response += "</body></html>"
+        response = ''
+        if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+            web.header('Content-Type', 'application/json')
+            response = json.dumps(sorted(pleasance.list_objects("installers")))
+        else:
+            web.header('Content-Type', 'text/html')
+            response = "<html><head><title>Available Installers</title></head><body>"
+            for installer_name in sorted(pleasance.list_objects("installers")):
+                response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + installer_name + "</a><br/>"
+            response += "</body></html>"
         return response
 
 
 class InstallerInstances:
     def GET(self, installer_name):
         try:
-            web.header('Content-Type', 'text/html')
-            response = "<html><head><title>Available Installers</title></head><body>"
-            for platformName in sorted(pleasance.list_installer_instances(installer_name)):
-                response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "/" + platformName + "'>" + \
-                            platformName + "</a><br/>"
-            response += "</body></html>"
+            response = ''
+            if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+                web.header('Content-Type', 'application/json')
+                response = json.dumps(sorted(pleasance.list_installer_instances(installer_name)))
+            else:
+                web.header('Content-Type', 'text/html')
+                response = "<html><head><title>Available Installers</title></head><body>"
+                for platformName in sorted(pleasance.list_installer_instances(installer_name)):
+                    response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "/" + platformName + "'>" + \
+                                platformName + "</a><br/>"
+                response += "</body></html>"
             return response
         except pleasance.InstallerNotFoundError:
             return web.notfound()
