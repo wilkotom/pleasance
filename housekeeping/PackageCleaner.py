@@ -93,3 +93,4 @@ for mtime in mtimelist:
         exitcode = 1
         print "Couldn't delete " + options.application + " version " + mtimes[mtime]
 
+exit(exitcode)
