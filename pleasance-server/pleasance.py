@@ -198,6 +198,12 @@ class PackageInstances:  # create / delete new package, list available package v
 
 class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
     def GET(self, package_name, package_version):
+        return self.PromotePackageVersion(package_name, package_version)
+
+    def POST(self, package_name, package_version):
+        return self.PromotePackageVersion(package_name, package_version)
+
+    def PromotePackageVersion(self, package_name, package_version):
         try:
             if pleasance.promote_package_version(package_name, package_version, True):
                 return "Promoted " + package_name + " version " + package_version
@@ -209,6 +215,12 @@ class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned u
 
 class PackageVersionUnpromote:  # Flag a package for automatic deletion
     def GET(self, package_name, package_version):
+        return self.UnpromotePackageVersion(package_name,package_version)
+
+    def POST(self, package_name, package_version):
+        return self.UnpromotePackageVersion(package_name, package_version)
+
+    def UnpromotePackageVersion(self, package_name, package_version):
         try:
             if pleasance.promote_package_version(package_name, package_version, False):
                 return "Unpromoted " + package_name + " version " + package_version
