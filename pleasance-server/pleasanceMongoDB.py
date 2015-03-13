@@ -28,7 +28,8 @@ class PleasanceMongo:
         return ['environments', 'bootstraps', 'installers', 'packages']
 
     def dump_configuration_object(self, object_name):
-        """Returns a JSON object containing the contents of the specified object type"""
+        """Returns a JSON object containing the contents of the specified object type,
+        stripped of internal references"""
         output = {}
         if object_name == 'packages':
             for result in self.packages.find():
@@ -336,8 +337,8 @@ class PleasanceMongo:
             self.installers.insert(installer_object)
         else:
             old_file_id = existing_installer['file_id']
-            self.installers.insert(installer_object)
             self.installers.remove({'name': installer_name})
+            self.installers.insert(installer_object)
             self.filestore.delete(old_file_id)
         return True
 
