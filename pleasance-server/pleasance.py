@@ -6,16 +6,17 @@ __author__ = 'twilkinson'
 import web
 from pleasanceShelf import PleasanceShelf
 import json
-from PleasanceMongoDB import PleasanceMongo
-
+from time import strftime, localtime
+from pleasanceMongoDB import PleasanceMongo
 
 
 urls = (
     '/dump', 'Dump',
     '/dump/(.*)$', 'DumpObject',
     '/package(s|info)', 'ShowAllPackages',
-    '/package(s|info)/([A-Za-z0-9\-_]*)$', 'PackageInstances',
+    '/packages/([A-Za-z0-9\-_]*)$', 'PackageInstances',
     '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
+    '/packageinfo/([A-Za-z0-9\-_]*)$', 'PackageInstancesInfo',
     '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
     '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
     '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
@@ -49,7 +50,7 @@ class PrintBadURL:
 
 
 ###############################################################################
-#  Dump Class. Throws whatever is in memory to the browser, for debugging ###
+# Dump Class. Throws whatever is in memory to the browser, for debugging ###
 ###############################################################################
 
 class Dump:
@@ -145,7 +146,7 @@ class ShowAllPackages:
     def GET(self, path_identifier):  # List available packages
         response = ''
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
-            web.header('Content-Type','application/json')
+            web.header('Content-Type', 'application/json')
             response = json.dumps(sorted(pleasance.list_objects("packages")))
         else:
             web.header('Content-Type', 'text/html')
@@ -158,7 +159,7 @@ class ShowAllPackages:
 
 
 class PackageInstances:  # create / delete new package, list available package versions
-    def GET(self, path_identifier, package_name):
+    def GET(self, package_name):
         if package_name in pleasance.list_objects("packages"):
             if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
                 web.header('Content-Type', 'application/json')
@@ -167,26 +168,20 @@ class PackageInstances:  # create / delete new package, list available package v
                 web.header('Content-Type', 'text/html')
                 response = "<html><head><title>Available Application Versions</title></head><body>"
                 for packageVersion in sorted(pleasance.list_package_versions(package_name)):
-                    response += "<a href='" + web.ctx.home + "/package" + path_identifier + "/" + package_name + "/" \
+                    response += "<a href='" + web.ctx.home + "/packages/" + package_name + "/" \
                                 + packageVersion + "'>" + packageVersion + "</a><br/>"
                 response += "</body></html>"
             return response
         else:
             return web.notfound("Application does not exist")
 
-    def PUT(self, path_identifier, package_name):
-        if path_identifier == 'info':
-            # Can't modify objects in the /packageinfo path
-            return web.nomethod()
+    def PUT(self, package_name):
         if pleasance.create_package(package_name):
             return "Created package " + package_name
         else:
             return web.internalerror()
 
-    def DELETE(self, path_identifier, package_name):
-        if path_identifier == 'info':
-            # Can't modify objects in the /packageinfo path
-            return web.nomethod()
+    def DELETE(self, package_name):
         try:
             if pleasance.delete_package(package_name):
                 return "Deleted package " + package_name
@@ -194,6 +189,44 @@ class PackageInstances:  # create / delete new package, list available package v
                 return web.badrequest()
         except pleasance.PackageNotFoundError:
             return "Package does not exist - no action taken"
+
+
+class PackageInstancesInfo:
+    def GET(self, package_name):
+        if package_name in pleasance.list_objects("packages"):
+            package_versions_details = {}
+            for package_version in sorted(pleasance.list_package_versions(package_name)):
+                package_versions_details[package_version] = json.loads(
+                    pleasance.retrieve_package_details(package_name, package_version))
+            if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+                web.header('Content-Type', 'application/json')
+                response = json.dumps(package_versions_details, sort_keys=True, indent=2, separators=(',', ': '))
+            else:
+                web.header('Content-Type', 'text/html')
+                response = "<html><head><title>Available Application Versions</title></head><body>"
+                response += "<table border=1><th>Package</th><th>Version</th><th>Timestamp</th><th>Promoted</th></tr>"
+                for package_version in sorted(package_versions_details.keys()):
+                    response += '<tr><td>' + package_name + '</td><td>' + \
+                                '<a href="' + web.ctx.home + '/packageinfo/' + package_name + '/' + \
+                                package_version + '">' + package_version + '</a></td><td>' + \
+                                strftime('%Y-%m-%d %H:%M:%S',
+                                    localtime(package_versions_details[package_version]["created"])) + \
+                                "</td><td>"
+                    if "promoted" in package_versions_details[package_version] and \
+                                    package_versions_details[package_version]["promoted"] is True:
+                        response += "<font color='red'>True</font></td></tr>"
+                    else:
+                        response += "False</td></tr>"
+                response += "</table></body></html>"
+            return response
+        else:
+            return web.notfound("Application does not exist")
+
+    def PUT(self, _):
+        return web.nomethod()
+
+    def DELETE(self, _):
+        return web.nomethod
 
 
 class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
@@ -215,7 +248,7 @@ class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned u
 
 class PackageVersionUnpromote:  # Flag a package for automatic deletion
     def GET(self, package_name, package_version):
-        return self.UnpromotePackageVersion(package_name,package_version)
+        return self.UnpromotePackageVersion(package_name, package_version)
 
     def POST(self, package_name, package_version):
         return self.UnpromotePackageVersion(package_name, package_version)
@@ -259,6 +292,7 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
                 return web.forbidden()
         except pleasance.PackageNotFoundError:
             return web.notfound()
+
 
 class PackageVersionInfo:
     def GET(self, package_name, package_version):
@@ -417,10 +451,10 @@ class InstallerInstanceSpecific:
 
 ############ Settings here  ###################
 
-#package_repository_location = "./packages"
+# package_repository_location = "./packages"
 #configuration_repository_location = "./Configuration"
 #pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
-pleasance = PleasanceMongo('chsxplsnce001.idx.expedmz.com',27017)
+pleasance = PleasanceMongo('chsxplsnce001.idx.expedmz.com', 27017)
 
 
 ############### End Settings ##################
