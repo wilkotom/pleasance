@@ -215,6 +215,12 @@ class PleasanceShelf:
         else:
             raise self.EnvironmentNotFoundError
 
+    def service_instance_configuration_history(self, instance_name):
+        return []
+
+    def service_instance_historic_version(self, instance_name, version):
+        raise self.EnvironmentNotFoundError
+
     def store_bootstrap(self, bootstrap_name, content_type, bootstrap_data):
         self.configurationRepository["bootstraps"][bootstrap_name] = {}
         self.configurationRepository["bootstraps"][bootstrap_name]["script"] = bootstrap_data

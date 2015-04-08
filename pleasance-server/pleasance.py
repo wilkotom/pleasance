@@ -257,7 +257,7 @@ class PackageInstancesInfo:
                                 '<a href="' + web.ctx.home + '/packageinfo/' + package_name + '/' + \
                                 package_version + '">' + package_version + '</a></td><td>' + \
                                 strftime('%Y-%m-%d %H:%M:%S',
-                                         localtime(package_versions_details[package_version]["created"])) + \
+                                    localtime(package_versions_details[package_version]["created"])) + \
                                 "</td><td>"
                     if "promoted" in package_versions_details[package_version] and \
                                     package_versions_details[package_version]["promoted"] is True:

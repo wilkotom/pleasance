@@ -9,7 +9,7 @@ class PleasanceMongo:
     import hashlib
     import magic
     import re
-    from time import time,localtime
+    from time import time
     import sys
     import pickle
     from pymongo import MongoClient
