@@ -11,21 +11,23 @@ from pleasanceMongoDB import PleasanceMongo
 
 
 urls = (
-    '/dump', 'Dump',
+    '/dump/?', 'Dump',
     '/dump/(.*)$', 'DumpObject',
-    '/package(s|info)', 'ShowAllPackages',
-    '/packages/([A-Za-z0-9\-_]*)$', 'PackageInstances',
+    '/package(s|info)/?', 'ShowAllPackages',
+    '/packages/([A-Za-z0-9\-_]*)/?$', 'PackageInstances',
     '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
-    '/packageinfo/([A-Za-z0-9\-_]*)$', 'PackageInstancesInfo',
+    '/packageinfo/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
     '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
     '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
     '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
-    '/configuration', 'Configuration',
+    '/configuration/?$', 'Configuration',
     '/configuration/([A-Za-z0-9\-_]*)$', 'ConfigurationServiceInstance',  # eg /configuration/eqc-pm-service-int
-    '/configuration/([A-Za-z0-9\-_]*)/(.*)', 'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
-    '/bootstrap', 'BootStrap',
+    '/configuration/([A-Za-z0-9\-_]*)/history/?$', 'ConfigurationServiceInstanceHistory',
+    '/configuration/([A-Za-z0-9\-_]*)/history/(.*)$', 'ConfigurationServiceInstanceHistoricVersion',
+    '/configuration/([A-Za-z0-9\-_]*)/(.*)',  'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
+    '/bootstrap/?$', 'BootStrap',
     '/bootstrap/(.*)', 'BootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
-    '/installer', 'Installers',
+    '/installer/?$', 'Installers',
     '/installer/([A-Za-z0-9\-_]*)$', 'InstallerInstances',  # /installer/expediaApplicationFolder
     '/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific',  # /installer/expediaApplicationFolder/linux
     '/(.*)', 'PrintBadURL'
@@ -138,6 +140,51 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
             return web.notfound()
 
 
+class ConfigurationServiceInstanceHistory:
+    def GET(self, instance_name):
+        response = ''
+        instance_history = pleasance.service_instance_configuration_history(instance_name)
+        if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
+            version_list = []
+            web.header('Content-Type', 'application/json')
+            for version in sorted(instance_history):
+                version_list.append(version['datestamp'])
+            print version_list
+            response = json.dumps(version_list, sort_keys=True, indent=2, separators=(',', ': '))
+        else:
+            web.header('Content-Type', 'text/html')
+            response = '<html><head><title>Available Applications</title></head><body>'
+            response += '<h1>Version history for ' + instance_name + '</h1>'
+            for version in instance_history:
+                readable_time = strftime('%Y-%m-%d %H:%M:%S', localtime(version['datestamp']))
+                response += '<a href="' + web.ctx.home + '/configuration/' + instance_name + '/history/' + \
+                            str(version['datestamp']) + '">' + readable_time + '</a><br/>'
+            response += "</body></html>"
+        return response
+
+
+class ConfigurationServiceInstanceHistoricVersion:
+    def GET(self, instance_name, version):
+        try:
+            web.header('Content-Type', 'application/json')
+            historic_version = pleasance.service_instance_historic_version(instance_name, version)['content']
+            del historic_version['_id']
+            return json.dumps(historic_version, sort_keys=True, indent=2, separators=(',', ': '))
+        except pleasance.EnvironmentNotFoundError:
+            return web.notfound()
+
+    def PUT(self, instance_name, version):
+        return web.nomethod()
+
+    def DELETE(self,instance_name,version):
+        try:
+            pleasance.delete_historic_version(instance_name, version)
+            return 'Configuration ' + version + ' for ' + instance_name + ' deleted'
+        except pleasance.EnvironmentNotFoundError:
+            return web.notfound()
+
+
+
 ################################################################################
 # Packages: Store different versions of a deployment package
 ################################################################################
@@ -210,7 +257,7 @@ class PackageInstancesInfo:
                                 '<a href="' + web.ctx.home + '/packageinfo/' + package_name + '/' + \
                                 package_version + '">' + package_version + '</a></td><td>' + \
                                 strftime('%Y-%m-%d %H:%M:%S',
-                                    localtime(package_versions_details[package_version]["created"])) + \
+                                         localtime(package_versions_details[package_version]["created"])) + \
                                 "</td><td>"
                     if "promoted" in package_versions_details[package_version] and \
                                     package_versions_details[package_version]["promoted"] is True:
@@ -452,9 +499,10 @@ class InstallerInstanceSpecific:
 ############ Settings here  ###################
 
 # package_repository_location = "./packages"
-#configuration_repository_location = "./Configuration"
-#pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
-pleasance = PleasanceMongo('chsxplsnce001.idx.expedmz.com', 27017)
+# configuration_repository_location = "./Configuration"
+# pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
+pleasance = PleasanceMongo('localhost', 27017)
+
 
 
 ############### End Settings ##################

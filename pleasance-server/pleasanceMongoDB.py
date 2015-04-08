@@ -9,7 +9,7 @@ class PleasanceMongo:
     import hashlib
     import magic
     import re
-    from time import time
+    from time import time,localtime
     import sys
     import pickle
     from pymongo import MongoClient
@@ -21,6 +21,7 @@ class PleasanceMongo:
         self.environments = self.mongo_database.environments
         self.bootstraps = self.mongo_database.bootstraps
         self.installers = self.mongo_database.installers
+        self.history = self.mongo_database.history
         self.filestore = self.gridfs.GridFS(self.mongo_database)
 
     def configuration_objects(self):
@@ -207,6 +208,8 @@ class PleasanceMongo:
                             configuration_data['deploymentDictionary'].pop(key)
             environment = self.environments.find_one({'name': instance_name})
             if environment is not None:
+                self.history.insert({"datestamp": int(self.time()), "objectType": "environment", "content": environment,
+                                     "serviceInstance": instance_name})
                 host_overrides = environment["hostOverrides"]
                 old_environment_id = environment["_id"]
                 new_record["hostOverrides"] = host_overrides
@@ -273,6 +276,26 @@ class PleasanceMongo:
                 return True
         else:
             raise self.EnvironmentNotFoundError
+
+    def service_instance_configuration_history(self, instance_name):
+        configuration_history = self.history.find({"serviceInstance": instance_name})
+        return configuration_history
+
+    def service_instance_historic_version(self, instance_name, version):
+        historic_config = self.history.find_one({'serviceInstance': instance_name, "datestamp": int(version)})
+        if historic_config is not None:
+            if "deploymentDictionary" in historic_config['content']['globalConfiguration'].keys():
+                for key in historic_config['content']['globalConfiguration']['deploymentDictionary'].keys():
+                    if '%2E' in key:  # Because BSON doesn't allow periods in key names, they're encoded to %2E
+                        new_key_name = key.replace('%2E', '.')
+                        historic_config['content']['globalConfiguration']['deploymentDictionary'][new_key_name] = historic_config['content']['globalConfiguration']['deploymentDictionary'].pop(key)
+            return historic_config
+        else:
+            raise self.EnvironmentNotFoundError
+
+    def delete_historic_version(self, instance_name, version):
+        self.history.remove({'serviceInstance': instance_name, "datestamp": int(version)})
+        return True
 
     def store_bootstrap(self, bootstrap_name, content_type, bootstrap_data):
         existing_bootstrap = self.bootstraps.find_one({"platform": bootstrap_name})
