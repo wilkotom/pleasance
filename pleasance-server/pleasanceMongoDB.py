@@ -288,7 +288,8 @@ class PleasanceMongo:
                 for key in historic_config['content']['globalConfiguration']['deploymentDictionary'].keys():
                     if '%2E' in key:  # Because BSON doesn't allow periods in key names, they're encoded to %2E
                         new_key_name = key.replace('%2E', '.')
-                        historic_config['content']['globalConfiguration']['deploymentDictionary'][new_key_name] = historic_config['content']['globalConfiguration']['deploymentDictionary'].pop(key)
+                        historic_config['content']['globalConfiguration']['deploymentDictionary'][new_key_name] = \
+                        historic_config['content']['globalConfiguration']['deploymentDictionary'].pop(key)
             return historic_config
         else:
             raise self.EnvironmentNotFoundError
