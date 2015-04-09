@@ -5,7 +5,7 @@ __author__ = 'twilkinson'
 
 import web
 from pleasanceShelf import PleasanceShelf
-import json
+import json, re, base64
 from time import strftime, localtime
 from pleasanceMongoDB import PleasanceMongo
 
@@ -103,7 +103,13 @@ class ConfigurationServiceInstance:  # Get / Update / Delete global Configuratio
 
     def PUT(self, instance_name):
         try:
-            if pleasance.update_configuration(instance_name, web.ctx.env.get('CONTENT_TYPE'), web.data()):
+            auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+            if auth is not None:
+                auth = re.sub('^Basic ','',auth)
+                username,_ = base64.decodestring(auth).split(':')
+            else:
+                username = 'N/A'
+            if pleasance.update_configuration(instance_name, web.ctx.env.get('CONTENT_TYPE'), web.data(), username):
                 return "Updated Environment " + instance_name
         except pleasance.ConfigurationNotJSONError:
             return web.webapi.UnsupportedMediaType()
@@ -145,21 +151,18 @@ class ConfigurationServiceInstanceHistory:
         response = ''
         instance_history = pleasance.service_instance_configuration_history(instance_name)
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
-            version_list = []
-            web.header('Content-Type', 'application/json')
-            for version in sorted(instance_history):
-                version_list.append(version['datestamp'])
-            print version_list
             response = json.dumps(version_list, sort_keys=True, indent=2, separators=(',', ': '))
         else:
             web.header('Content-Type', 'text/html')
             response = '<html><head><title>Available Applications</title></head><body>'
             response += '<h1>Version history for ' + instance_name + '</h1>'
+            response += '<table><tr><th>Snapshot Time</th><th>Replaced By</th></tr>'
             for version in instance_history:
                 readable_time = strftime('%Y-%m-%d %H:%M:%S', localtime(version['datestamp']))
-                response += '<a href="' + web.ctx.home + '/configuration/' + instance_name + '/history/' + \
-                            str(version['datestamp']) + '">' + readable_time + '</a><br/>'
-            response += "</body></html>"
+                response += '<tr><td><a href="' + web.ctx.home + '/configuration/' + instance_name + '/history/' + \
+                            str(version['datestamp']) + '">' + readable_time + '</a> </td><td>' + \
+                            version['username'] + '</td></tr>'
+            response += "</table></body></html>"
         return response
 
 
@@ -169,7 +172,7 @@ class ConfigurationServiceInstanceHistoricVersion:
             web.header('Content-Type', 'application/json')
             historic_version = pleasance.service_instance_historic_version(instance_name, version)['content']
             del historic_version['_id']
-            return json.dumps(historic_version, sort_keys=True, indent=2, separators=(',', ': '))
+            return json.dumps(historic_version['globalConfiguration'], sort_keys=True, indent=2, separators=(',', ': '))
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 

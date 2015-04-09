@@ -156,7 +156,7 @@ class PleasanceShelf:
         else:
             raise self.EnvironmentNotFoundError
 
-    def update_configuration(self, instance_name, content_type, payload):
+    def update_configuration(self, instance_name, content_type, payload, _):
         if content_type == "application/json":
             try:
                 configuration_data = self.json.loads(payload)

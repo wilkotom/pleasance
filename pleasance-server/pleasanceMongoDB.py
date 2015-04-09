@@ -193,7 +193,7 @@ class PleasanceMongo:
         else:
             raise self.EnvironmentNotFoundError
 
-    def update_configuration(self, instance_name, content_type, payload):
+    def update_configuration(self, instance_name, content_type, payload, username):
         new_record = {}
         if content_type == "application/json":
             try:
@@ -209,7 +209,7 @@ class PleasanceMongo:
             environment = self.environments.find_one({'name': instance_name})
             if environment is not None:
                 self.history.insert({"datestamp": int(self.time()), "objectType": "environment", "content": environment,
-                                     "serviceInstance": instance_name})
+                                     "serviceInstance": instance_name, "userName": username})
                 host_overrides = environment["hostOverrides"]
                 old_environment_id = environment["_id"]
                 new_record["hostOverrides"] = host_overrides
@@ -278,24 +278,30 @@ class PleasanceMongo:
             raise self.EnvironmentNotFoundError
 
     def service_instance_configuration_history(self, instance_name):
-        configuration_history = self.history.find({"serviceInstance": instance_name})
+        configuration_history = []
+        for version in self.history.find({"serviceInstance": instance_name}):
+            if "userName" in version:
+                configuration_history.append({"datestamp": version["datestamp"], "username": version["userName"]})
+            else:
+                configuration_history.append({"datestamp": version["datestamp"], "username": "N/A"})
         return configuration_history
 
     def service_instance_historic_version(self, instance_name, version):
-        historic_config = self.history.find_one({'serviceInstance': instance_name, "datestamp": int(version)})
+        historic_config = self.history.find_one(
+            {'serviceInstance': instance_name, "datestamp": int(version), "objectType": "environment"})
         if historic_config is not None:
             if "deploymentDictionary" in historic_config['content']['globalConfiguration'].keys():
                 for key in historic_config['content']['globalConfiguration']['deploymentDictionary'].keys():
                     if '%2E' in key:  # Because BSON doesn't allow periods in key names, they're encoded to %2E
                         new_key_name = key.replace('%2E', '.')
                         historic_config['content']['globalConfiguration']['deploymentDictionary'][new_key_name] = \
-                        historic_config['content']['globalConfiguration']['deploymentDictionary'].pop(key)
+                            historic_config['content']['globalConfiguration']['deploymentDictionary'].pop(key)
             return historic_config
         else:
             raise self.EnvironmentNotFoundError
 
     def delete_historic_version(self, instance_name, version):
-        self.history.remove({'serviceInstance': instance_name, "datestamp": int(version)})
+        self.history.remove({'serviceInstance': instance_name, "datestamp": int(version), "objectType": "environment"})
         return True
 
     def store_bootstrap(self, bootstrap_name, content_type, bootstrap_data):
