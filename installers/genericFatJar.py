@@ -58,19 +58,19 @@ for dictionaryKey in configurationData['deploymentDictionary']:
             exit(1)
 
 
-if not 'serviceName' in configurationData:
+if 'serviceName' not in configurationData:
     print('FATAL: serviceName attribute not defined')
     exit(1)
 
-if not 'jarName' in configurationData:
+if 'jarName' not in configurationData:
     print('FATAL: Jar Name not defined')
     exit(1)
 
-if not 'instanceProperties' in configurationData:
+if 'instanceProperties' not in configurationData:
     print('FATAL: Instance Properties not specified')
     exit(1)
 
-if not 'serviceUser' in configurationData:
+if 'serviceUser' not in configurationData:
     configurationData['serviceUser'] = configurationData['serviceName']
 
 startServiceCommand = ['/sbin/service', configurationData['serviceName'], 'start']
@@ -83,13 +83,13 @@ if 'serviceInstance' in configurationData:
 
 
 instanceProperties = subprocess.Popen(['curl', '-s', configurationData['instanceProperties']],
-                                           stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 instancePropertiesText = instanceProperties.communicate()[0]
 if instanceProperties.returncode != 0:
     print("FATAL: Couldn't fetch " + configurationData['instanceProperties'])
     exit(1)
-instancePropertiesFileHandle = open('./instance.properties','w')
+instancePropertiesFileHandle = open('./instance.properties', 'w')
 instancePropertiesFileHandle.write(instancePropertiesText)
 instancePropertiesFileHandle.close()
 
@@ -139,7 +139,7 @@ for token in foundTokensCopy:
     if token in configurationData['deploymentDictionary']:
         foundTokens.remove(token)
 
-if foundTokens != []:
+if foundTokens:
     print('The following tokens could not be expanded: ', end='')
     for token in foundTokens:
         print(token + ', ', end='')
@@ -163,17 +163,15 @@ if 'yumRepositoryPath' in configurationData and 'RepositoryURL' in configuration
 
 # Install Java
 if 'javaVersion' in configurationData['deploymentDictionary'] and \
-                'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
+        'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
     print('Checking for Java version ' + configurationData['deploymentDictionary']['javaVersion'] + ': ', end='')
     rpmList = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
     if rpmList.find(configurationData['deploymentDictionary']['javaVersion']) < 0:
         print('Not Found. Installing it... ', end='')
         exitCode = subprocess.call(['rpm', '-i', configurationData['RepositoryURL'] + configurationData[
             'yumRepositoryPath'] + '/jdk-' + configurationData['deploymentDictionary']['javaVersion'] +
-                                '-fcs.x86_64.rpm', '--oldpackage', '--relocate',
-                                '/etc/init.d/jexec=/etc/init.d/jexec-' +
-                                configurationData['deploymentDictionary']['javaVersion'], '--badreloc'],
-                                stdout=devnull, stderr=devnull)
+            '-fcs.x86_64.rpm', '--oldpackage', '--relocate', '/etc/init.d/jexec=/etc/init.d/jexec-' +
+            configurationData['deploymentDictionary']['javaVersion'], '--badreloc'], stdout=devnull, stderr=devnull)
         if exitCode == 0:
             print('OK')
         else:
@@ -187,19 +185,19 @@ if 'javaVersion' in configurationData['deploymentDictionary'] and \
             certResponseBody = certRequest.communicate()[0]
             if certRequest.returncode != 0:
                 print('FAILED. Could not fetch certificate at ' + configurationData['RepositoryURL'] +
-                              configurationData['certificatePath'] + '/' + CACert + '.crt')
+                      configurationData['certificatePath'] + '/' + CACert + '.crt')
                 print('curl return code was: ' + str(certRequest.returncode))
                 print('curl errors follow: ')
                 print(certRequest.communicate()[1])
                 exit(1)
-            certificateFileHandle = open('./' + CACert + '.crt','w')
+            certificateFileHandle = open('./' + CACert + '.crt', 'w')
             certificateFileHandle.write(certResponseBody)
             certificateFileHandle.close()
             if subprocess.call(['/usr/java/jdk' + configurationData['deploymentDictionary']['javaVersion'] +
-                    '/bin/keytool', '-import', '-keystore', '/usr/java/jdk' +
-                    configurationData['deploymentDictionary']['javaVersion'] +
-                    '/jre/lib/security/cacerts', '-storepass', 'changeit', '-noprompt', '-file',
-                    './' + CACert + '.crt', '-alias', CACert], stdout=devnull, stderr=devnull) != 0:
+                                '/bin/keytool', '-import', '-keystore', '/usr/java/jdk' +
+                                configurationData['deploymentDictionary']['javaVersion'] +
+                                '/jre/lib/security/cacerts', '-storepass', 'changeit', '-noprompt', '-file',
+                                './' + CACert + '.crt', '-alias', CACert], stdout=devnull, stderr=devnull) != 0:
                 print('FAILED')
                 exit(1)
             print('OK')
@@ -228,7 +226,7 @@ if os.path.exists('/etc/cron.d/update_pdnsd.cron'):
 # Create SSL Certificates
 
 if 'certificatePath' in configurationData and 'certificateName' in configurationData and \
-                'certificatePassPhrase' in configurationData:
+        'certificatePassPhrase' in configurationData:
     print('Updating certificate: ' + configurationData['certificateName'] + ' ', end='')
     decodedPassPhrase = ''
     try:
@@ -237,8 +235,10 @@ if 'certificatePath' in configurationData and 'certificateName' in configuration
         print('FATAL: Passphrase cannot be decoded.')
         exit(1)
     certRequest = subprocess.Popen(['curl', '-s', '--user', configurationData['certificateName'] + ':' +
-        decodedPassPhrase, configurationData['RepositoryURL'] + configurationData['certificatePath'] + '/' +
-        configurationData['certificateName']], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    decodedPassPhrase,
+                                    configurationData['RepositoryURL'] + configurationData['certificatePath'] + '/' +
+                                    configurationData['certificateName']], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
     certificateContents = certRequest.communicate()[0]
     if certRequest.returncode != 0:
         print('FAILED. Could not fetch certificate at ' + configurationData['RepositoryURL'] +
@@ -274,18 +274,18 @@ for templatedfileName in templatedFiles:
         os.chmod(templatedfileName, 0500)  # If the file contains passwords, it shouldn't be generally readable
 
 os.mkdir(configurationData['targetDirectory'] + '.new')
-os.mkdir(configurationData['targetDirectory'] + '.new'+ '/etc')
-os.mkdir(configurationData['targetDirectory'] + '.new'+ '/bin')
-os.mkdir(configurationData['targetDirectory'] + '.new'+ '/temp')
+os.mkdir(configurationData['targetDirectory'] + '.new' + '/etc')
+os.mkdir(configurationData['targetDirectory'] + '.new' + '/bin')
+os.mkdir(configurationData['targetDirectory'] + '.new' + '/temp')
 if not os.path.isdir(configurationData['targetDirectory'] + '.bak' + '/logs'):
-    os.mkdir(configurationData['targetDirectory'] + '.new'+ '/logs')
-shutil.move('./instance.properties',configurationData['targetDirectory'] + '.new'+ '/etc/instance.properties')
+    os.mkdir(configurationData['targetDirectory'] + '.new' + '/logs')
+shutil.move('./instance.properties', configurationData['targetDirectory'] + '.new' + '/etc/instance.properties')
 os.chdir('explodedJar')
-targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new'+ '/bin/' + configurationData['jarName'],'w')
-for dirname, subdirs, files in os.walk ('./'):
+targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new' + '/bin/' + configurationData['jarName'], 'w')
+for dirname, subdirs, files in os.walk('./'):
     targetJar.write(dirname)
     for fileName in files:
-        targetJar.write(os.path.join(dirname,fileName))
+        targetJar.write(os.path.join(dirname, fileName))
 targetJar.close()
 
 if subprocess.call(['chown', '-R', configurationData['serviceUser'] + ':',
