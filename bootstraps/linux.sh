@@ -8,7 +8,7 @@ fi
 workdir=$(mktemp -d)
 
 cd ${workdir}
-echo "$(date): Pleasance Bootstrap initiated for {{packageName}} version {{packageVersion}}" | tee >(exec logger -t pleasance-agent)
+echo "$(date): Pleasance Bootstrap initiated for {{packageName}} version {{packageVersion}} on server ${HOSTNAME}" | tee >(exec logger -t pleasance-agent)
 curl -s {{packageURL}} > ./packagefile
 curl -s {{environmentConfiguration}} > ./environmentSetup
 curl -s {{installerPath}} > ./installer
