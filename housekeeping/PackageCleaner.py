@@ -34,11 +34,11 @@ if options.username is None:
     print "Option --username is required."
     exitcode = 1
 
-if options.password is None:
-    options.password = getpass("Please enter password for user " + options.username + ": ")
-
 if exitcode > 0:
     exit(exitcode)
+
+if options.password is None:
+    options.password = getpass("Please enter password for user " + options.username + ": ")
 
 credentials = b64encode(options.username + ":" + options.password)
 request_headers = {"Accept": "application/json", "User-Agent": "Pleasance Package Cleaner/0.1",
