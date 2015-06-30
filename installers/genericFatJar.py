@@ -81,26 +81,23 @@ if 'serviceInstance' in configurationData:
     stopServiceCommand.append(configurationData['serviceInstance'])
     configurationData['targetDirectory'] += '/' + configurationData['serviceInstance']
 
-try:
-    instanceProperties = subprocess.Popen(['curl', '-s', configurationData['instanceProperties'] + configurationData[
-                                           'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE,
-                                           stderr=subprocess.PIPE)
-    instancePropertiesText = instanceProperties.communicate()[0]
-    if instanceProperties.returncode != 0:
-        print("FATAL: Couldn't fetch " + configurationData['instanceProperties'])
-        exit(1)
-    instancePropertiesFileHandle = open('./instance.properties',w)
-    instancePropertiesFileHandle.write(instancePropertiesText)
-    instancePropertiesFileHandle.close()
 
+instanceProperties = subprocess.Popen(['curl', '-s', configurationData['instanceProperties']],
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+instancePropertiesText = instanceProperties.communicate()[0]
+if instanceProperties.returncode != 0:
+    print("FATAL: Couldn't fetch " + configurationData['instanceProperties'])
+    exit(1)
+instancePropertiesFileHandle = open('./instance.properties','w')
+instancePropertiesFileHandle.write(instancePropertiesText)
+instancePropertiesFileHandle.close()
 
 # Delete any aborted previous installation
 if os.path.isdir(configurationData['targetDirectory'] + '.new'):
     print('Deleted old working directory at ' + configurationData['targetDirectory'] + '.new')
     shutil.rmtree(configurationData['targetDirectory'] + '.new')
 
-os.makedirs(configurationData['targetDirectory'] + '.new', 0755)
-print('Created ' + configurationData['targetDirectory'] + '.new')
 
 try:
     os.mkdir('./explodedJar')
@@ -122,7 +119,7 @@ for dirPath, dirName, fileNames in os.walk('./explodedJar'):
 
 foundTokens = []
 
-templatedfiles.append('/instance.properties')
+templatedFiles.append('./instance.properties')
 
 for templatedFile in templatedFiles:
     fileContents = open(templatedFile, 'r').read()
@@ -276,20 +273,20 @@ for templatedfileName in templatedFiles:
     if templatedfileName.endswith('password'):
         os.chmod(templatedfileName, 0500)  # If the file contains passwords, it shouldn't be generally readable
 
-try:
-    os.mkdir(configurationData['targetDirectory'] + '.new')
-    os.mkdir(configurationData['targetDirectory'] + '.new'+ '/etc')
-    os.mkdir(configurationData['targetDirectory'] + '.new'+ '/bin')
-    os.mkdir(configurationData['targetDirectory'] + '.new'+ '/temp')
-    os.rename('./instance.properties',configurationData['targetDirectory'] + '.new'+ '/etc/instance.properties')
-    targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new'+ '/bin/' + configurationData['jarName'])
-    for dirname, subdirs, files in os.walk ('./explodedJar'):
-        targetJar.write(dirname)
-        for filename in files:
-            targetJar.write(os.path.join(dirname,fileName))
-    targetJar.close()
-except:
-    print("Couldn't Create new installation")
+os.mkdir(configurationData['targetDirectory'] + '.new')
+os.mkdir(configurationData['targetDirectory'] + '.new'+ '/etc')
+os.mkdir(configurationData['targetDirectory'] + '.new'+ '/bin')
+os.mkdir(configurationData['targetDirectory'] + '.new'+ '/temp')
+if not os.path.isdir(configurationData['targetDirectory'] + '.bak' + '/logs'):
+    os.mkdir(configurationData['targetDirectory'] + '.new'+ '/logs')
+shutil.move('./instance.properties',configurationData['targetDirectory'] + '.new'+ '/etc/instance.properties')
+os.chdir('explodedJar')
+targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new'+ '/bin/' + configurationData['jarName'],'w')
+for dirname, subdirs, files in os.walk ('./'):
+    targetJar.write(dirname)
+    for fileName in files:
+        targetJar.write(os.path.join(dirname,fileName))
+targetJar.close()
 
 if subprocess.call(['chown', '-R', configurationData['serviceUser'] + ':',
                     configurationData['targetDirectory'] + '.new']) != 0:
