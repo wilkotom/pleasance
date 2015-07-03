@@ -19,6 +19,8 @@ curl -s {{environmentConfiguration}} > ./environmentSetup
 curl -s {{installerPath}} > ./installer
 chmod 755 ./installer
 ./installer | tee >(exec logger -t pleasance-agent)
+mkdir -p /var/db/pleasance
 exitcode=${PIPESTATUS[0]}
 [ ${exitcode} == 0 ] && echo "{{packageVersion}}" | sudo tee /var/db/pleasance/{{packageName}}.version >/dev/null
+rm -rf ${workdir}
 exit ${exitcode}
