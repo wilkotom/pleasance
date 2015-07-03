@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash 
 
 if [ ${UID} != 0 ]; then
 	sudo $0
@@ -20,7 +20,5 @@ curl -s {{installerPath}} > ./installer
 chmod 755 ./installer
 ./installer | tee >(exec logger -t pleasance-agent)
 exitcode=${PIPESTATUS[0]}
-sudo mkdir -p /var/db/pleasance
 [ ${exitcode} == 0 ] && echo "{{packageVersion}}" | sudo tee /var/db/pleasance/{{packageName}}.version >/dev/null
-sudo rm -rf ${workdir}
 exit ${exitcode}
