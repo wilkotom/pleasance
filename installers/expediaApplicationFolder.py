@@ -94,7 +94,8 @@ except zipfile.BadZipfile:
 templatedFiles = []
 for dirPath, dirName, fileNames in os.walk(configurationData['targetDirectory'] + '.new'):
     for fileName in fileNames:
-        if not (fileName.endswith('ar') or fileName.endswith('class')):
+        if not (fileName.endswith('ar') or fileName.endswith('class') or fileName.endswith('jks') or fileName.endswith(
+                'pfx') or fileName.endswith('ser')):
             # No EAR, JAR, WAR or DAR files here thanks!
             # Need to genericise this better.
             templatedFiles.append(dirPath + '/' + fileName)
