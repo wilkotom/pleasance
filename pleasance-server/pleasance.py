@@ -3,21 +3,22 @@
 
 __author__ = 'twilkinson'
 
-import web
-from pleasanceShelf import PleasanceShelf
-import json, re, base64
+import web, json, re, base64, zlib
 from time import strftime, localtime
 from pleasanceMongoDB import PleasanceMongo
-
+from pleasanceShelf import PleasanceShelf
 
 urls = (
     '/dump/?', 'Dump',
     '/dump/(.*)$', 'DumpObject',
-    '/package(s|info)/?', 'ShowAllPackages',
+    '/package(s|info|export)/?', 'ShowAllPackages',
     '/packages/([A-Za-z0-9\-_]*)/?$', 'PackageInstances',
     '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
     '/packageinfo/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
     '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
+    '/packageexport/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
+    '/packageexport/([A-Za-z0-9\-_]*)/(.*)', 'PackageExportVersion',
+    '/packageimport', 'PackageImportVersion',
     '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
     '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
     '/configuration/?$', 'Configuration',
@@ -151,7 +152,7 @@ class ConfigurationServiceInstanceHistory:
         response = ''
         instance_history = pleasance.service_instance_configuration_history(instance_name)
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
-            response = json.dumps(version_list, sort_keys=True, indent=2, separators=(',', ': '))
+            response = json.dumps(instance_history, sort_keys=True, indent=2, separators=(',', ': '))
         else:
             web.header('Content-Type', 'text/html')
             response = '<html><head><title>Available Applications</title></head><body>'
@@ -352,6 +353,45 @@ class PackageVersionInfo:
             return package_details
         except pleasance.PackageInstanceNotFoundError:
             return web.notfound()
+
+
+class PackageExportVersion:
+    def GET(self, package_name, package_version):
+        try:
+            package_details = pleasance.retrieve_package_details(package_name, package_version)
+            (content_type, package_contents) = pleasance.retrieve_package_version(package_name, package_version)
+            export_package = {'metadata': package_details, 'content-type': content_type,
+                              'contents': base64.b64encode(package_contents), 'name': package_name,
+                              'version': package_version}
+            web.header('Content-Type', 'application/pleasance-package')
+            web.header('Content-Disposition', 'attachment; filename=' + package_name + '.' + package_version + '.pnc')
+            response = zlib.compress(json.dumps(export_package))
+            web.header('Content-Length', len(response))
+            return response
+        except pleasance.PackageInstanceNotFoundError:
+            return web.notfound()
+
+
+class PackageImportVersion:
+    def POST(self):
+        try:
+            package_object = json.loads(zlib.decompress(web.data()))
+            if not pleasance.create_package(package_object['name']):
+                return web.internalerror()
+            if not pleasance.update_package_version(package_object['name'], package_object['version'],
+                                                    package_object['content-type'],
+                                                    base64.b64decode(package_object['contents'])):
+                return web.internalerror()
+            else:
+                pleasance.update_package_metadata(package_object['name'], package_object['version'], json.loads(package_object['metadata']))
+                web.header('Location',
+                           web.ctx.home + '/packages/' + package_object['name'] + '/' + package_object['version'])
+                return web.created()
+        except zlib.error, ValueError:
+            return web.internalerror('Could not decode package object')
+
+
+
 
 
 ################################################################################

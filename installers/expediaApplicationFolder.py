@@ -37,7 +37,7 @@ while loopCounter < 10 and not flattenedDictionary:
                 if token in configurationData['deploymentDictionary']:
                     configurationData['deploymentDictionary'][dictionaryKey] = configurationData[
                         'deploymentDictionary'][dictionaryKey].replace('{{' + token + '}}',
-                                                                    configurationData['deploymentDictionary'][token])
+                                                                       configurationData['deploymentDictionary'][token])
                 else:
                     print('FATAL: Undefined Dictionary key ' + token)
                     exit(1)
@@ -95,7 +95,7 @@ templatedFiles = []
 for dirPath, dirName, fileNames in os.walk(configurationData['targetDirectory'] + '.new'):
     for fileName in fileNames:
         if not (fileName.endswith('ar') or fileName.endswith('class') or fileName.endswith('jks') or fileName.endswith(
-                'pfx') or fileName.endswith('ser')):
+                'pfx') or fileName.endswith('ser') or fileName.endswith('cacerts')):
             # No EAR, JAR, WAR or DAR files here thanks!
             # Need to genericise this better.
             templatedFiles.append(dirPath + '/' + fileName)

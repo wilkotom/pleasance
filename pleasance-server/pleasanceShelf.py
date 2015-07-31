@@ -118,6 +118,10 @@ class PleasanceShelf:
         else:
             raise self.PackageNotFoundError
 
+    def update_package_metadata(self, package_name, package_version, new_metadata):
+        self.configurationRepository["packages"][package_name][package_version] = new_metadata
+        return True
+
     def promote_package_version(self, package_name, package_version, promotion_flag):
         if package_name in self.configurationRepository["packages"]:
             if package_version in self.configurationRepository["packages"][package_name]:

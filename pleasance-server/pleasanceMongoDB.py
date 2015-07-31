@@ -136,6 +136,15 @@ class PleasanceMongo:
         response = response + "Current Versions available:" + '\n'.join(self.list_package_versions(package_name))
         return response
 
+    def update_package_metadata(self, package_name, package_version, new_metadata):
+        new_metadata['name'] = package_name
+        new_metadata['version'] = package_version
+        if self.packages.find_one({"name": package_name, "version": package_version}):
+            self.packages.update({"name": package_name, "version": package_version}, {"$set": new_metadata})
+        else:
+            self.packages.insert(new_metadata)
+        return True
+
     def promote_package_version(self, package_name, package_version, promotion_flag):
         package = self.packages.find_one({"name": package_name, "version": package_version})
         if package is not None:
