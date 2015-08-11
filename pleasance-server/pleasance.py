@@ -3,10 +3,15 @@
 
 __author__ = 'twilkinson'
 
-import web, json, re, base64, zlib
+import json
+import re
+import base64
+import zlib
 from time import strftime, localtime
+
+import web
+
 from pleasanceMongoDB import PleasanceMongo
-from pleasanceShelf import PleasanceShelf
 
 urls = (
     '/dump/?', 'Dump',
@@ -14,6 +19,7 @@ urls = (
     '/package(s|info|export)/?', 'ShowAllPackages',
     '/packages/([A-Za-z0-9\-_]*)/?$', 'PackageInstances',
     '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
+    '/packages/([A-Za-z0-9\-_]*)/(.*)/export$', 'PackageExportVersion',
     '/packageinfo/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
     '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
     '/packageexport/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
@@ -25,7 +31,7 @@ urls = (
     '/configuration/([A-Za-z0-9\-_]*)$', 'ConfigurationServiceInstance',  # eg /configuration/eqc-pm-service-int
     '/configuration/([A-Za-z0-9\-_]*)/history/?$', 'ConfigurationServiceInstanceHistory',
     '/configuration/([A-Za-z0-9\-_]*)/history/(.*)$', 'ConfigurationServiceInstanceHistoricVersion',
-    '/configuration/([A-Za-z0-9\-_]*)/(.*)',  'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
+    '/configuration/([A-Za-z0-9\-_]*)/(.*)', 'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
     '/bootstrap/?$', 'BootStrap',
     '/bootstrap/(.*)', 'BootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
     '/installer/?$', 'Installers',
@@ -106,8 +112,8 @@ class ConfigurationServiceInstance:  # Get / Update / Delete global Configuratio
         try:
             auth = web.ctx.env.get('HTTP_AUTHORIZATION')
             if auth is not None:
-                auth = re.sub('^Basic ','',auth)
-                username,_ = base64.decodestring(auth).split(':')
+                auth = re.sub('^Basic ', '', auth)
+                username, _ = base64.decodestring(auth).split(':')
             else:
                 username = 'N/A'
             if pleasance.update_configuration(instance_name, web.ctx.env.get('CONTENT_TYPE'), web.data(), username):
@@ -180,13 +186,12 @@ class ConfigurationServiceInstanceHistoricVersion:
     def PUT(self, instance_name, version):
         return web.nomethod()
 
-    def DELETE(self,instance_name,version):
+    def DELETE(self, instance_name, version):
         try:
             pleasance.delete_historic_version(instance_name, version)
             return 'Configuration ' + version + ' for ' + instance_name + ' deleted'
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
-
 
 
 ################################################################################
@@ -261,10 +266,10 @@ class PackageInstancesInfo:
                                 '<a href="' + web.ctx.home + '/packageinfo/' + package_name + '/' + \
                                 package_version + '">' + package_version + '</a></td><td>' + \
                                 strftime('%Y-%m-%d %H:%M:%S',
-                                    localtime(package_versions_details[package_version]["created"])) + \
+                                         localtime(package_versions_details[package_version]["created"])) + \
                                 "</td><td>"
                     if "promoted" in package_versions_details[package_version] and \
-                                    package_versions_details[package_version]["promoted"] is True:
+                            package_versions_details[package_version]["promoted"] is True:
                         response += "<font color='red'>True</font></td></tr>"
                     else:
                         response += "False</td></tr>"
@@ -383,15 +388,13 @@ class PackageImportVersion:
                                                     base64.b64decode(package_object['contents'])):
                 return web.internalerror()
             else:
-                pleasance.update_package_metadata(package_object['name'], package_object['version'], json.loads(package_object['metadata']))
+                pleasance.update_package_metadata(package_object['name'], package_object['version'],
+                                                  json.loads(package_object['metadata']))
                 web.header('Location',
                            web.ctx.home + '/packages/' + package_object['name'] + '/' + package_object['version'])
                 return web.created()
         except zlib.error, ValueError:
             return web.internalerror('Could not decode package object')
-
-
-
 
 
 ################################################################################
@@ -481,7 +484,8 @@ class Installers:
             web.header('Content-Type', 'text/html')
             response = "<html><head><title>Available Installers</title></head><body>"
             for installer_name in sorted(pleasance.list_objects("installers")):
-                response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + installer_name + "</a><br/>"
+                response += "<a href='" + web.ctx.home + "/installer/" + installer_name + "'>" + \
+                            installer_name + "</a><br/>"
             response += "</body></html>"
         return response
 
@@ -535,17 +539,16 @@ class InstallerInstanceSpecific:
         except pleasance.InstallerNotFoundError:
             return web.notfound()
 
+
 ################################################################################
 # Startup Here
 ################################################################################
 
 ############ Settings here  ###################
-
 # package_repository_location = "./packages"
 # configuration_repository_location = "./Configuration"
 # pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
 pleasance = PleasanceMongo('localhost', 27017)
-
 
 
 ############### End Settings ##################
