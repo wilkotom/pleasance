@@ -82,7 +82,7 @@ if 'serviceInstance' in configurationData:
     configurationData['targetDirectory'] += '/' + configurationData['serviceInstance']
 
 
-instanceProperties = subprocess.Popen(['curl', '-s', configurationData['instanceProperties']],
+instanceProperties = subprocess.Popen(['curl', '-k', '-s', configurationData['instanceProperties']],
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 instancePropertiesText = instanceProperties.communicate()[0]
@@ -179,7 +179,7 @@ if 'javaVersion' in configurationData['deploymentDictionary'] and \
             exit(1)
         for CACert in ['ExpediaRootCA', 'ExpediaInternal1C']:
             print('Adding ' + CACert + ' certificate to trust store: ', end='')
-            certRequest = subprocess.Popen(['curl', '-s', configurationData['RepositoryURL'] + configurationData[
+            certRequest = subprocess.Popen(['curl', '-k', '-s', configurationData['RepositoryURL'] + configurationData[
                                            'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
             certResponseBody = certRequest.communicate()[0]
@@ -234,7 +234,7 @@ if 'certificatePath' in configurationData and 'certificateName' in configuration
     except TypeError:
         print('FATAL: Passphrase cannot be decoded.')
         exit(1)
-    certRequest = subprocess.Popen(['curl', '-s', '--user', configurationData['certificateName'] + ':' +
+    certRequest = subprocess.Popen(['curl', '-k', '-s', '--user', configurationData['certificateName'] + ':' +
                                     decodedPassPhrase,
                                     configurationData['RepositoryURL'] + configurationData['certificatePath'] + '/' +
                                     configurationData['certificateName']], stdout=subprocess.PIPE,

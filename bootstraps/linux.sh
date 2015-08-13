@@ -16,9 +16,9 @@ workdir=$(mktemp -d)
 
 cd ${workdir}
 echo "$(date): Pleasance Bootstrap initiated for {{packageName}} version {{packageVersion}} on server ${HOSTNAME}" | tee >(exec logger -t pleasance-agent)
-curl -s {{packageURL}} > ./packagefile
-curl -s {{environmentConfiguration}} > ./environmentSetup
-curl -s {{installerPath}} > ./installer
+curl -k -s {{packageURL}} > ./packagefile
+curl -k -s {{environmentConfiguration}} > ./environmentSetup
+curl -k -s {{installerPath}} > ./installer
 chmod 755 ./installer
 ${SUDOPREFIX} ./installer | tee >(exec logger -t pleasance-agent)
 exitcode=${PIPESTATUS[0]}
