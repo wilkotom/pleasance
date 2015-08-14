@@ -1,6 +1,6 @@
 __author__ = 'twilkinson'
 
-'''Lists versions of a particular package newer than a given datestamp
+'''Lists versions of a particular export package newer than a given datestamp
 We can wrap this in a cron job to periodically grab files like this:
   for package in $(packageListUpdatedVersions.py --application ari \
        --connect https://pleasance.idx.expedmz.com/pleasance/v1 --newer $(stat -c %Y /path/to/semaphore)); do
