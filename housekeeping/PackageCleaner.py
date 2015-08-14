@@ -1,5 +1,10 @@
 __author__ = 'twilkinson'
 
+'''Removes older unpromoted versions of a particular package, retaining a fixed number
+It can be invoked like this:
+  PackageCleaner.py --application ari --connect https://pleasance.idx.expedmz.com/pleasance/v1 --number 20 \
+   --username twilkinson'''
+
 import httplib
 import json
 from getpass import getpass
@@ -53,30 +58,20 @@ if 'https' in protocol:
 else:
     pleasance_service = httplib.HTTPConnection(hostname)
 
-pleasance_service.request("GET", "/" + path + "/packages/" + options.application, None, request_headers)
+pleasance_service.request("GET", "/" + path + "/packageinfo/" + options.application, None, request_headers)
 response = pleasance_service.getresponse()
 if response.status != 200:
     print "Package not found on service " + options.connect
 
-package_list = sorted(json.loads(response.read()))
-properties = {}
-for package in package_list:
-    pleasance_service.request("GET", "/" + path + "/packageinfo/" + options.application + '/' + package, None,
-                              request_headers)
-    response = pleasance_service.getresponse()
-    if response.status != 200:
-        print "Fetching Package info failed! Check database integrity"
-        exit(1)
-    else:
-        properties[package] = json.loads(response.read())
+package_list = json.loads(response.read())
 
 mtimes = {}
 
 for package in package_list:
-    if properties[package]['promoted'] is False:
-        mtimes[properties[package]['created']] = package
+    if package_list[package]['promoted'] is False:
+        mtimes[package_list[package]['created']] = package
     else:
-        print "Excluding promoted package version " + package + "from clean up"
+        print "Excluding promoted package version " + package + " from clean up"
 
 mtimelist = sorted(mtimes)
 items_to_delete = len(mtimelist) - options.number
