@@ -89,6 +89,8 @@ class PleasanceShelf:
             old_file_name = 'NonExistent'
             # Delete the old version, if it exists
             if package_version in self.configurationRepository["packages"][package_name]:
+                if self.configurationRepository["packages"][package_name]['promoted'] is True:
+                    raise self.PackageIsPromotedError
                 response += "Deleted " + self.configurationRepository["packages"][package_name][package_version][
                     "checksum"]
                 old_file_name = self.configurationRepository["packages"][package_name][package_version]["checksum"]
@@ -333,3 +335,6 @@ class PleasanceShelf:
 
     class CannotUpdatePackageError(Exception):
         """Package could not be updated"""
+
+    class PackageIsPromotedError(Exception):
+        """Package is promoted and cannot be overwritten by an import"""
