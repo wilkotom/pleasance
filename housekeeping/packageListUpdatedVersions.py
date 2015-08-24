@@ -4,7 +4,7 @@ __author__ = 'twilkinson'
 We can wrap this in a cron job to periodically grab files like this:
   for package in $(packageListUpdatedVersions.py --application ari \
        --connect https://pleasance.idx.expedmz.com/pleasance/v1 --newer $(stat -c %Y /path/to/semaphore)); do
-    wget ${package}
+    wget --content-disposition ${package};
   done
   touch /path/to/semaphore'''
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 __author__ = 'twilkinson'
 
 '''Removes older unpromoted versions of a particular package, retaining a fixed number
@@ -51,7 +52,7 @@ request_headers = {"Accept": "application/json", "User-Agent": "Pleasance Packag
 
 (protocol, _, hostname, path) = options.connect.split('/', 3)
 
-print "Connecting to " + protocol + "//" + hostname + "/" + path
+# print "Connecting to " + protocol + "//" + hostname + "/" + path
 
 if 'https' in protocol:
     pleasance_service = httplib.HTTPSConnection(hostname)
@@ -71,16 +72,19 @@ for package in package_list:
     if package_list[package]['promoted'] is False:
         mtimes[package_list[package]['created']] = package
     else:
-        print "Excluding promoted package version " + package + " from clean up"
+        print "Excluding promoted " + options.application + " version " + package + " from clean up"
 
 mtimelist = sorted(mtimes)
 items_to_delete = len(mtimelist) - options.number
+if items_to_delete < 0:
+    items_to_delete = 0
 mtimelist = mtimelist[0:items_to_delete]
 
-print "Will delete " + str(items_to_delete) + " of " + str(len(mtimelist)) + " qualifying packages"
+print "Will delete " + str(items_to_delete) + " of " + str(
+    len(mtimelist)) + " qualifying " + options.application + " packages"
 
 for mtime in mtimelist:
-    print "Deleting " + mtimes[mtime]
+    print "Deleting " + options.application + " " + mtimes[mtime]
     pleasance_service.request("DELETE", "/" + path + "/packages/" + options.application + '/' + mtimes[mtime], None,
                               request_headers)
     response = pleasance_service.getresponse()
