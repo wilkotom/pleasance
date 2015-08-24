@@ -393,6 +393,9 @@ class PackageImportVersion:
                 web.header('Location',
                            web.ctx.home + '/packages/' + package_object['name'] + '/' + package_object['version'])
                 return web.created()
+        except pleasance.PackageIsPromotedError:
+            return web.HTTPError(self, '309 Conflict', 'Content-Type: text/plain',
+                                   'Cannot overwrite a promoted package')
         except zlib.error, ValueError:
             return web.internalerror('Could not decode package object')
 

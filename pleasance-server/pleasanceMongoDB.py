@@ -11,7 +11,6 @@ class PleasanceMongo:
     import re
     from time import time
     import sys
-    import pickle
     from pymongo import MongoClient
     import gridfs
 
@@ -119,6 +118,8 @@ class PleasanceMongo:
         if content_type == '':
             content_type = self.magic.from_buffer(package_data, mime=True)
         if existing_package is not None:
+            if existing_package['promoted'] is True:
+                raise self.PackageIsPromotedError
             if existing_package['checksum'] != filename:
                 old_file_id = existing_package['file_id']
                 self.filestore.delete(old_file_id)
@@ -419,3 +420,6 @@ class PleasanceMongo:
 
     class CannotUpdatePackageError(Exception):
         """Package could not be updated"""
+
+    class PackageIsPromotedError(Exception):
+        """Package is promoted and cannot be overwritten by an import"""
