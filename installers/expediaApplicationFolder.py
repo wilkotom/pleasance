@@ -61,19 +61,22 @@ for dictionaryKey in configurationData['deploymentDictionary']:
             dictionaryKey].replace('\\\\', '\\')
 
 if 'serviceName' not in configurationData:
-    print('FATAL: serviceName attribute not defined')
-    exit(1)
+    print('Warning: No service name defined.')
+else:
+    startServiceCommand = ['/sbin/service', configurationData['serviceName'], 'start']
+    stopServiceCommand = ['/sbin/service', configurationData['serviceName'], 'stop']
+    if 'serviceInstance' in configurationData:
+        startServiceCommand.append(configurationData['serviceInstance'])
+        stopServiceCommand.append(configurationData['serviceInstance'])
+        configurationData['targetDirectory'] += '/' + configurationData['serviceInstance']
 
 if 'serviceUser' not in configurationData:
-    configurationData['serviceUser'] = configurationData['serviceName']
+    if 'serviceName' not in configurationData:
+        print('FATAL: serviceUser attribute not defined')
+        exit(1)
+    else:
+        configurationData['serviceUser'] = configurationData['serviceName']
 
-startServiceCommand = ['/sbin/service', configurationData['serviceName'], 'start']
-stopServiceCommand = ['/sbin/service', configurationData['serviceName'], 'stop']
-
-if 'serviceInstance' in configurationData:
-    startServiceCommand.append(configurationData['serviceInstance'])
-    stopServiceCommand.append(configurationData['serviceInstance'])
-    configurationData['targetDirectory'] += '/' + configurationData['serviceInstance']
 
 # Delete any aborted previous installation
 if os.path.isdir(configurationData['targetDirectory'] + '.new'):
