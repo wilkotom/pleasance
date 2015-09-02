@@ -152,6 +152,9 @@ if foundTokens:
 # Create the YUM repo
 
 if 'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
+    if os.path.exists('/etc/yum.repos.d/expedia.repo'):
+        print('Removing legacy yum repository /etc/yum.repos.d/expedia.repo')
+        os.remove('/etc/yum.repos.d/expedia.repo')
     print('Updating Yum Repository config...')
     repofile = open('/etc/yum.repos.d/delite.repo', 'w')
     repofile.write('[expedia-delite]\nname=expedia-delite\nbaseurl=' + configurationData[
