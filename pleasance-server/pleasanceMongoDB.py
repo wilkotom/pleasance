@@ -114,13 +114,14 @@ class PleasanceMongo:
         filename = self.hashlib.sha1(package_data).hexdigest()
         response = ''
         existing_package = self.packages.find_one({"name": package_name, "version": package_version})
-        new_file_id = self.filestore.put(package_data)
+
         if content_type == '':
             content_type = self.magic.from_buffer(package_data, mime=True)
         if existing_package is not None:
             if existing_package['promoted'] is True:
                 raise self.PackageIsPromotedError
             if existing_package['checksum'] != filename:
+                new_file_id = self.filestore.put(package_data)
                 old_file_id = existing_package['file_id']
                 self.filestore.delete(old_file_id)
                 response += "Deleted old package with same version number, checksum: " + existing_package['checksum']
@@ -130,6 +131,7 @@ class PleasanceMongo:
             else:
                 response += "Package version already uploaded. No action taken.\n"
         else:
+            new_file_id = self.filestore.put(package_data)
             self.packages.insert(
                 {"name": package_name, "version": package_version, "checksum": filename, "type": content_type,
                  "promoted": False, "created": self.time(), "file_id": new_file_id})
