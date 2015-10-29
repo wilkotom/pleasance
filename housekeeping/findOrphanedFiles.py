@@ -9,7 +9,7 @@ usage = "usage: %prog [options]"
 parser = OptionParser(usage)
 parser.add_option("-s", "--server", dest="mongo_server", help="Host for Mongo DB database (default: localhost)", default="localhost")
 parser.add_option("-p", "--port", dest="mongo_port", help="Port fopr Mongo DB database (default: 27017)", default=27017)
-parser.add_option("-d", "--delete", action="store_true", dest="delete_files ", help="Delete Files?", default=False)
+parser.add_option("-d", "--delete", action="store_true", dest="delete_files", help="Delete Files?", default=False)
 
 (options, args) = parser.parse_args()
 
