@@ -7,6 +7,10 @@ import subprocess
 import base64
 import os
 import shutil
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 packageFile = './packagefile'
 configurationFile = './environmentSetup'
