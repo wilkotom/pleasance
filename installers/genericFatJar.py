@@ -14,10 +14,19 @@ sys.setdefaultencoding('utf8')
 
 packageFile = './packagefile'
 configurationFile = './environmentSetup'
+debugging_enabled = False
+devnull = open('/dev/null', 'w')
+package_modified = False
+templatedFiles = []
+
+suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser']
 
 configurationData = json.load(open(configurationFile))
-
-devnull = open('/dev/null', 'w')
+if 'debug' in configurationData:
+    if configurationData['debug'] is True:
+        debugging_enabled = True
+    elif not isinstance(configurationData['debug'], bool):
+        print('WARNING: debug flag is not boolean. Assuming debug flag is set to false')
 
 # Flatten the dictionary
 loopCounter = 0
@@ -41,7 +50,7 @@ while loopCounter < 10 and not flattenedDictionary:
                 if token in configurationData['deploymentDictionary']:
                     configurationData['deploymentDictionary'][dictionaryKey] = configurationData[
                         'deploymentDictionary'][dictionaryKey].replace('{{' + token + '}}',
-                        configurationData['deploymentDictionary'][token])
+                                                                       configurationData['deploymentDictionary'][token])
                 else:
                     print('FATAL: Undefined Dictionary key ' + token)
                     exit(1)
@@ -53,14 +62,12 @@ if not flattenedDictionary:
 
 for dictionaryKey in configurationData['deploymentDictionary']:
     if dictionaryKey.endswith('.password'):
-
         try:
             configurationData['deploymentDictionary'][dictionaryKey] = base64.b64decode(
                 configurationData['deploymentDictionary'][dictionaryKey])
         except TypeError:
             print('FATAL: ' + dictionaryKey + ' cannot be decoded.')
             exit(1)
-
 
 if 'serviceName' not in configurationData:
     print('FATAL: serviceName attribute not defined')
@@ -85,7 +92,6 @@ if 'serviceInstance' in configurationData:
     stopServiceCommand.append(configurationData['serviceInstance'])
     configurationData['targetDirectory'] += '/' + configurationData['serviceInstance']
 
-
 instanceProperties = subprocess.Popen(['curl', '-k', '-s', configurationData['instanceProperties']],
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -102,7 +108,6 @@ if os.path.isdir(configurationData['targetDirectory'] + '.new'):
     print('Deleted old working directory at ' + configurationData['targetDirectory'] + '.new')
     shutil.rmtree(configurationData['targetDirectory'] + '.new')
 
-
 try:
     os.mkdir('./explodedJar')
     packageZip = zipfile.ZipFile('./packagefile', 'r')
@@ -112,28 +117,38 @@ except zipfile.BadZipfile:
     print('FATAL: Package supplied does not appear to be a Zip archive.')
     exit(1)
 
-templatedFiles = []
+packageFiles = []
 for dirPath, dirName, fileNames in os.walk('./explodedJar'):
     for fileName in fileNames:
-        if not (fileName.endswith('ar') or fileName.endswith('class') or fileName.endswith('jks') or fileName.endswith(
-                'pfx') or fileName.endswith('ser')):
-            # No EAR, JAR, WAR or DAR files here thanks!
-            # Need to genericise this better.
-            templatedFiles.append(dirPath + '/' + fileName)
+        blacklisted = False
+        for suffix in suffix_blacklist:
+            if fileName.endswith(suffix):
+                blacklisted = True
+        if blacklisted is False:
+            packageFiles.append(dirPath + '/' + fileName)
+        elif debugging_enabled is True:
+            print('DEBUG: Blackisted suffix. Not scanning placeholders in file: ' + dirPath + '/' + fileName)
 
 foundTokens = []
 
 templatedFiles.append('./instance.properties')
 
-for templatedFile in templatedFiles:
+for templatedFile in packageFiles:
+    if debugging_enabled is True:
+        print('DEBUG: Checking ' + templatedFile + ' for templated values:')
     fileContents = open(templatedFile, 'r').read()
     tokenList = []
     for token in fileContents.split('}}'):
         if token.find('{{') >= 0:
             tokenList.append(token.partition('{{')[2])
+            templatedFiles.append(templatedFile)
+            if debugging_enabled is True:
+                print('DEBUG:     Found templated value: ' + token.partition('{{')[2])
     foundTokens = foundTokens + tokenList
 
-foundTokens = (list(set(foundTokens)))  # Remove duplicates
+templatedFiles = list(set(templatedFiles))  # remove duplicate entries from file and token lists
+foundTokens = (list(set(foundTokens)))
+
 if '' in foundTokens:
     foundTokens.remove('')  # remove the empty token, if present
 
@@ -156,29 +171,37 @@ if foundTokens:
 # Create the YUM repo
 
 if 'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
+    yum_repo_definition = '[expedia-delite]\nname=expedia-delite\nbaseurl=' + configurationData[
+        'RepositoryURL'] + configurationData['yumRepositoryPath'] + '\nenabled=1\npriority=1\ngpgcheck=0\n'
     if os.path.exists('/etc/yum.repos.d/expedia.repo'):
-        print('Removing legacy yum repository /etc/yum.repos.d/expedia.repo')
+        if debugging_enabled is True:
+            print('DEBUG: Removing legacy yum repository /etc/yum.repos.d/expedia.repo')
         os.remove('/etc/yum.repos.d/expedia.repo')
-    print('Updating Yum Repository config...')
+    if debugging_enabled is True:
+        print('DEBUG: Updating Yum Repository config with contents: \n' + yum_repo_definition)
     repofile = open('/etc/yum.repos.d/delite.repo', 'w')
-    repofile.write('[expedia-delite]\nname=expedia-delite\nbaseurl=' + configurationData[
-        'RepositoryURL'] + configurationData['yumRepositoryPath'] + '\nenabled=1\npriority=1\ngpgcheck=0\n')
+    repofile.write(yum_repo_definition)
     repofile.close()
     if subprocess.call(['yum', 'clean', 'all'], stdout=devnull, stderr=devnull) != 0:
-        print('Failed to clean yum caches')
+        print('DEBUG: Failed to clean yum caches')
         exit(1)
+    else:
+        if debugging_enabled is True:
+            print('DEBUG: Successfully cleared yum caches')
 
 # Install Java
 if 'javaVersion' in configurationData['deploymentDictionary'] and \
-        'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
+                'yumRepositoryPath' in configurationData and 'RepositoryURL' in configurationData:
     print('Checking for Java version ' + configurationData['deploymentDictionary']['javaVersion'] + ': ', end='')
     rpmList = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
     if rpmList.find(configurationData['deploymentDictionary']['javaVersion']) < 0:
         print('Not Found. Installing it... ', end='')
         exitCode = subprocess.call(['rpm', '-i', configurationData['RepositoryURL'] + configurationData[
             'yumRepositoryPath'] + '/jdk-' + configurationData['deploymentDictionary']['javaVersion'] +
-            '-fcs.x86_64.rpm', '--oldpackage', '--relocate', '/etc/init.d/jexec=/etc/init.d/jexec-' +
-            configurationData['deploymentDictionary']['javaVersion'], '--badreloc'], stdout=devnull, stderr=devnull)
+                                    '-fcs.x86_64.rpm', '--oldpackage', '--relocate',
+                                    '/etc/init.d/jexec=/etc/init.d/jexec-' +
+                                    configurationData['deploymentDictionary']['javaVersion'], '--badreloc'],
+                                   stdout=devnull, stderr=devnull)
         if exitCode == 0:
             print('OK')
         else:
@@ -187,7 +210,7 @@ if 'javaVersion' in configurationData['deploymentDictionary'] and \
         for CACert in ['ExpediaRootCA', 'ExpediaInternal1C']:
             print('Adding ' + CACert + ' certificate to trust store: ', end='')
             certRequest = subprocess.Popen(['curl', '-k', '-s', configurationData['RepositoryURL'] + configurationData[
-                                           'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE,
+                'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE,
                                            stderr=subprocess.PIPE)
             certResponseBody = certRequest.communicate()[0]
             if certRequest.returncode != 0:
@@ -216,24 +239,24 @@ if 'javaVersion' in configurationData['deploymentDictionary'] and \
 
 for rpmName in configurationData['packagesRequired']:
     if subprocess.call(['rpm', '-q', rpmName], stdout=devnull, stderr=devnull) != 0:
-        print('Installing RPM: ' + rpmName)
-        if subprocess.call(['yum', '-y', 'install', rpmName], stdout=devnull, stderr=devnull) != 0:
-            print('Failed to install ' + rpmName)
-            exit(1)
+        yum_action = 'install'
     else:
-        print('Upgrading RPM: ' + rpmName)
-        if subprocess.call(['yum', '-y', 'upgrade', rpmName], stdout=devnull, stderr=devnull) != 0:
-            print('Yum call to upgrade ' + rpmName + ' Failed')
-            exit(1)
+        yum_action = 'upgrade'
+    print('Updating RPM: ' + rpmName)
+    if subprocess.call(['yum', '-y', yum_action, rpmName], stdout=devnull, stderr=devnull) != 0:
+        print('Failed to ' + yum_action + ' ' + rpmName)
+        exit(1)
 
 # Clean up unwanted cron entry
 
 if os.path.exists('/etc/cron.d/update_pdnsd.cron'):
+    if debugging_enabled is True:
+        print('DEBUG: removing legacy cron entry /etc/cron.d/update_pdnsd.cron')
     os.remove('/etc/cron.d/update_pdnsd.cron')
 # Create SSL Certificates
 
 if 'certificatePath' in configurationData and 'certificateName' in configurationData and \
-        'certificatePassPhrase' in configurationData:
+                'certificatePassPhrase' in configurationData:
     print('Updating certificate: ' + configurationData['certificateName'] + ' ', end='')
     decodedPassPhrase = ''
     try:
@@ -266,6 +289,8 @@ if 'certificatePath' in configurationData and 'certificateName' in configuration
     print('OK')
 
 for templatedfileName in templatedFiles:
+    if debugging_enabled is True:
+        print('DEBUG: Replacing templated values in ' + templatedfileName)
     template = open(templatedfileName, 'r')
     outputData = template.read()
     template.close()
@@ -279,6 +304,8 @@ for templatedfileName in templatedFiles:
     os.remove(templatedfileName + '~')
     if templatedfileName.endswith('password'):
         os.chmod(templatedfileName, 0500)  # If the file contains passwords, it shouldn't be generally readable
+    if templatedfileName is not './instance.properties':
+        package_modified = True
 
 os.mkdir(configurationData['targetDirectory'] + '.new')
 os.mkdir(configurationData['targetDirectory'] + '.new' + '/etc')
@@ -287,13 +314,22 @@ os.mkdir(configurationData['targetDirectory'] + '.new' + '/temp')
 if not os.path.isdir(configurationData['targetDirectory'] + '.bak' + '/logs'):
     os.mkdir(configurationData['targetDirectory'] + '.new' + '/logs')
 shutil.move('./instance.properties', configurationData['targetDirectory'] + '.new' + '/etc/instance.properties')
-os.chdir('explodedJar')
-targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new' + '/bin/' + configurationData['jarName'], 'w')
-for dirname, subdirs, files in os.walk('./'):
-    targetJar.write(dirname)
-    for fileName in files:
-        targetJar.write(os.path.join(dirname, fileName))
-targetJar.close()
+
+if package_modified is True:
+    if debugging_enabled is True:
+        print('DEBUG: creating new jar file as the original artifact contained templated files')
+    os.chdir('explodedJar')
+    targetJar = zipfile.ZipFile(configurationData['targetDirectory'] + '.new' + '/bin/' + configurationData['jarName'],
+                                'w')
+    for dirname, subdirs, files in os.walk('./'):
+        targetJar.write(dirname)
+        for fileName in files:
+            targetJar.write(os.path.join(dirname, fileName))
+    targetJar.close()
+else:
+    if debugging_enabled is True:
+        print('DEBUG: Using original deployment artifact as no templated files were detected')
+    shutil.move('./packagefile', configurationData['targetDirectory'] + '.new' + '/bin/' + configurationData['jarName'])
 
 if subprocess.call(['chown', '-R', configurationData['serviceUser'] + ':',
                     configurationData['targetDirectory'] + '.new']) != 0:
