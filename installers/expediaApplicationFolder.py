@@ -14,10 +14,17 @@ sys.setdefaultencoding('utf8')
 
 packageFile = './packagefile'
 configurationFile = './environmentSetup'
+debugging_enabled = False
+devnull = open('/dev/null', 'w')
+
+suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser']
 
 configurationData = json.load(open(configurationFile))
-
-devnull = open('/dev/null', 'w')
+if 'debug' in configurationData:
+    if configurationData['debug'] is True:
+        debugging_enabled = True
+    elif not isinstance(configurationData['debug'], bool):
+        print('WARNING: debug flag is not boolean. Assuming debug flag is set to false')
 
 # Flatten the dictionary
 loopCounter = 0
@@ -98,26 +105,35 @@ except zipfile.BadZipfile:
     print('FATAL: Package supplied does not appear to be a Zip archive.')
     exit(1)
 
-templatedFiles = []
+packagedFiles = []
+
 for dirPath, dirName, fileNames in os.walk(configurationData['targetDirectory'] + '.new'):
     for fileName in fileNames:
-        if not (fileName.endswith('ar') or fileName.endswith('class') or fileName.endswith('jks') or fileName.endswith(
-                'pfx') or fileName.endswith('ser') or fileName.endswith('cacerts')):
-            # No EAR, JAR, WAR or DAR files here thanks!
-            # Need to genericise this better.
-            templatedFiles.append(dirPath + '/' + fileName)
+        blacklisted = False
+        for suffix in suffix_blacklist:
+            if fileName.endswith(suffix):
+                blacklisted = True
+        if blacklisted is False:
+            packagedFiles.append(dirPath + '/' + fileName)
+        elif debugging_enabled is True:
+            print('DEBUG: Blackisted suffix. Not scanning placeholders in file: ' + dirPath + '/' + fileName)
+
 
 foundTokens = []
+templatedFiles = []
 
-for templatedFile in templatedFiles:
-    fileContents = open(templatedFile, 'r').read()
+for packagedFile in packagedFiles:
+    fileContents = open(packagedFile, 'r').read()
     tokenList = []
     for token in fileContents.split('}}'):
         if token.find('{{') >= 0:
             tokenList.append(token.partition('{{')[2])
+            templatedFiles.append(packageFile)
     foundTokens = foundTokens + tokenList
 
-foundTokens = (list(set(foundTokens)))  # Remove duplicates
+foundTokens = list(set(foundTokens))  # Remove duplicates
+templatedFiles = list(set(templatedFiles))
+
 if '' in foundTokens:
     foundTokens.remove('')  # remove the empty token, if present
 
