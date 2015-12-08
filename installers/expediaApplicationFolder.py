@@ -8,6 +8,7 @@ import base64
 import os
 import shutil
 import sys
+import pwd
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -128,8 +129,10 @@ for packagedFile in packagedFiles:
     for token in fileContents.split('}}'):
         if token.find('{{') >= 0:
             tokenList.append(token.partition('{{')[2])
-            templatedFiles.append(packageFile)
+            templatedFiles.append(packagedFile)
     foundTokens = foundTokens + tokenList
+    if packagedFile.endswith('password'):
+        os.chmod(packagedFile, 0500)  # If the file contains passwords, it shouldn't be generally readable
 
 foundTokens = list(set(foundTokens))  # Remove duplicates
 templatedFiles = list(set(templatedFiles))
@@ -262,7 +265,7 @@ if 'certificatePath' in configurationData and \
                                     decodedPassPhrase,
                                     configurationData['RepositoryURL'] + configurationData['certificatePath'] + '/' +
                                     configurationData['certificateName']], stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE)
+                                   stderr=subprocess.PIPE)
     certificateContents = certRequest.communicate()[0]
     if certRequest.returncode != 0:
         print('FAILED. Could not fetch certificate at ' + configurationData['RepositoryURL'] +
@@ -294,8 +297,6 @@ for templatedfileName in templatedFiles:
     outputFile.write(outputData)
     outputFile.close()
     os.remove(templatedfileName + '~')
-    if templatedfileName.endswith('password'):
-        os.chmod(templatedfileName, 0500)  # If the file contains passwords, it shouldn't be generally readable
 
 if subprocess.call(['chown', '-R', configurationData['serviceUser'] + ':',
                     configurationData['targetDirectory'] + '.new']) != 0:
@@ -325,7 +326,14 @@ os.rename(configurationData['targetDirectory'] + '.new', configurationData['targ
 
 # Retain the logs from the old version, if any
 if os.path.isdir(configurationData['targetDirectory'] + '.bak' + '/logs'):
+    #  if there's a log dir in the deployment artifact, delete it in favour of the existing directory
+    if os.path.isdir(configurationData['targetDirectory'] + '/logs'):
+        shutil.rmtree(configurationData['targetDirectory'] + '/logs')
     os.rename(configurationData['targetDirectory'] + '.bak' + '/logs', configurationData['targetDirectory'] + '/logs')
+elif not os.path.isdir(configurationData['targetDirectory'] + '/logs'):
+    os.mkdir(configurationData['targetDirectory'] + '/logs', 0755)
+    os.chown(configurationData['targetDirectory'] + '/logs', pwd.getpwnam(configurationData['serviceUser']).pw_uid,
+             pwd.getpwnam(configurationData['serviceUser']).pw_gid)
 
 if 'serviceName' in configurationData:
     print('Starting ' + configurationData['serviceName'] + ' ', end='')
