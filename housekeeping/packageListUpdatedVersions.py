@@ -1,4 +1,6 @@
-__author__ = 'twilkinson'
+import httplib
+import json
+from optparse import OptionParser
 
 '''Lists versions of a particular export package newer than a given datestamp
 We can wrap this in a cron job to periodically grab files like this:
@@ -8,9 +10,6 @@ We can wrap this in a cron job to periodically grab files like this:
   done
   touch /path/to/semaphore'''
 
-import httplib
-import json
-from optparse import OptionParser
 
 usage = "usage: %prog [options]"
 parser = OptionParser(usage)
@@ -57,4 +56,3 @@ version_list = json.loads(response.read())
 for version in version_list:
     if version_list[version]["created"] > options.newer:
         print protocol + "//" + hostname + "/" + path + "/packageexport/" + options.application + "/" + version
-

@@ -21,6 +21,7 @@ external_command_output = open('/dev/null', 'w')
 
 suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser']
 
+
 def exit_script(exit_code):
     # We wrap the exit code so that we can dump the output of any failing command if debugging is enabled.
     if debugging_enabled is True:
@@ -28,6 +29,7 @@ def exit_script(exit_code):
         print("Command output was:")
         print(external_command_output.read())
     exit(exit_code)
+
 
 configuration_data = json.load(open(configuration_file))
 if 'debug' in configuration_data:
@@ -60,8 +62,8 @@ while loop_counter < 10 and not flattened_dictionary:
                 if token in configuration_data['deploymentDictionary']:
                     configuration_data['deploymentDictionary'][dictionary_key] = configuration_data[
                         'deploymentDictionary'][dictionary_key].replace('{{' + token + '}}',
-                                                                       configuration_data['deploymentDictionary'][
-                                                                           token])
+                                                                        configuration_data['deploymentDictionary'][
+                                                                            token])
                 else:
                     print('FATAL: Undefined Dictionary key ' + token)
                     exit_script(1)
@@ -136,10 +138,14 @@ found_tokens = []
 templated_files = []
 
 for packaged_file in packaged_files:
+    if debugging_enabled is True:
+        print("Searching for templated values in " + packaged_file)
     file_contents = open(packaged_file, 'r').read()
     token_list = []
     for token in file_contents.split('}}'):
         if token.find('{{') >= 0:
+            if debugging_enabled is True:
+                print("  Found templated value: " + token.partition('{{')[2])
             token_list.append(token.partition('{{')[2])
             templated_files.append(packaged_file)
     found_tokens = found_tokens + token_list
@@ -207,8 +213,9 @@ if 'javaVersion' in configuration_data['deploymentDictionary'] and \
             exit_script(1)
         for CACert in ['ExpediaRootCA', 'ExpediaInternal1C']:
             print('Adding ' + CACert + ' certificate to trust store: ', end='')
-            certificate_fetch = subprocess.Popen(['curl', '-k', '-s', configuration_data['RepositoryURL'] + configuration_data[
-                'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            certificate_fetch = subprocess.Popen(
+                    ['curl', '-k', '-s', configuration_data['RepositoryURL'] + configuration_data[
+                        'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             certResponseBody = certificate_fetch.communicate()[0]
             if certificate_fetch.returncode != 0:
                 print('FAILED. Could not fetch certificate at ' + configuration_data['RepositoryURL'] +
@@ -221,21 +228,22 @@ if 'javaVersion' in configuration_data['deploymentDictionary'] and \
             if debugging_enabled is True:
                 external_command_output.seek(0)
                 print('curl output as follows:')
-                print (external_command_output.read())
+                print(external_command_output.read())
                 external_command_output.truncate(0)
             certificate_file = open('./' + CACert + '.crt', 'w')
             certificate_file.write(certResponseBody)
             certificate_file.close()
             if subprocess.call(['/usr/java/jdk' + configuration_data['deploymentDictionary']['javaVersion'] +
-                                '/bin/keytool', '-import', '-keystore', '/usr/java/jdk' +
-                                configuration_data['deploymentDictionary']['javaVersion'] +
-                                '/jre/lib/security/cacerts', '-storepass', 'changeit', '-noprompt', '-file',
-                                './' + CACert + '.crt', '-alias', CACert], stdout=external_command_output, stderr=external_command_output) != 0:
+                                        '/bin/keytool', '-import', '-keystore', '/usr/java/jdk' +
+                                        configuration_data['deploymentDictionary']['javaVersion'] +
+                                        '/jre/lib/security/cacerts', '-storepass', 'changeit', '-noprompt', '-file',
+                                './' + CACert + '.crt', '-alias', CACert], stdout=external_command_output,
+                               stderr=external_command_output) != 0:
                 print('FAILED')
                 exit_script(1)
             print('OK')
             if debugging_enabled is True:
-                print ("Successfully imported " + CACert + " into Java certificate store")
+                print("Successfully imported " + CACert + " into Java certificate store")
 
     else:
         print('Found.')
@@ -268,7 +276,8 @@ if 'tomcatVersion' in configuration_data['deploymentDictionary'] and \
 for rpm_name in configuration_data['packagesRequired']:
     if subprocess.call(['rpm', '-q', rpm_name], stdout=external_command_output, stderr=external_command_output) != 0:
         print('Installing RPM: ' + rpm_name)
-        if subprocess.call(['yum', '-y', 'install', rpm_name], stdout=external_command_output, stderr=external_command_output) != 0:
+        if subprocess.call(['yum', '-y', 'install', rpm_name], stdout=external_command_output,
+                           stderr=external_command_output) != 0:
             print('Failed to install ' + rpm_name)
             exit_script(1)
         if debugging_enabled is True:
@@ -278,7 +287,8 @@ for rpm_name in configuration_data['packagesRequired']:
             external_command_output.truncate(0)
     else:
         print('Upgrading RPM: ' + rpm_name)
-        if subprocess.call(['yum', '-y', 'upgrade', rpm_name], stdout=external_command_output, stderr=external_command_output) != 0:
+        if subprocess.call(['yum', '-y', 'upgrade', rpm_name], stdout=external_command_output,
+                           stderr=external_command_output) != 0:
             print('Yum call to upgrade ' + rpm_name + ' Failed')
             exit_script(1)
         if debugging_enabled is True:
@@ -327,6 +337,8 @@ if 'certificatePath' in configuration_data and \
     print('OK')
 
 for templated_file_name in templated_files:
+    if debugging_enabled is True:
+        print("Replacing templated values in " + templated_file_name)
     template = open(templated_file_name, 'r')
     outputData = template.read()
     template.close()

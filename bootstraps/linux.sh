@@ -14,6 +14,12 @@ fi
 
 workdir=$(mktemp -d)
 
+if [[ ! $(rpm -q chef > /dev/null) ]]; then 
+   curl -sk  https://pleasance/pleasance/v1/installer/chef-installer/linux > ./chef-installer.sh
+   chmod 755 ./chef-installer.sh
+   ${SUDOPREFIX} ./chef-installer.sh
+fi
+
 cd ${workdir}
 echo "$(date): Pleasance Bootstrap initiated for {{packageName}} version {{packageVersion}} on server ${HOSTNAME}" | tee >(exec logger -t pleasance-agent)
 curl -k -s {{packageURL}} > ./packagefile
