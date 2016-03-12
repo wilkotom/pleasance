@@ -122,7 +122,7 @@ class PleasanceMongo:
                 content_type = 'application/octet-stream'
                 self.sys.stderr.write(
                     'Warning: Exception raised by Magic Library, falling back to application/octet-stream')
-                print magic_exception
+                self.sys.stderr.write(str(magic_exception))
         if existing_package is not None:
             if existing_package['promoted'] is True:
                 raise self.PackageIsPromotedError
