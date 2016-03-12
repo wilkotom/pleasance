@@ -116,7 +116,13 @@ class PleasanceMongo:
         existing_package = self.packages.find_one({"name": package_name, "version": package_version})
 
         if content_type == '':
-            content_type = self.magic.from_buffer(package_data, mime=True)
+            try:
+                content_type = self.magic.from_buffer(package_data, mime=True)
+            except self.magic.MagicException as magic_exception:
+                content_type = 'application/octet-stream'
+                self.sys.stderr.write(
+                    'Warning: Exception raised by Magic Library, falling back to application/octet-stream')
+                print magic_exception
         if existing_package is not None:
             if existing_package['promoted'] is True:
                 raise self.PackageIsPromotedError
