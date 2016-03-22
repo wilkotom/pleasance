@@ -108,7 +108,7 @@ class PleasanceShelf:
                                self.packageRepositoryDirectory + '/' + old_file_name)
                 raise self.CannotUpdatePackageError
             if content_type == '':
-                content_type = self.magic.from_buffer(package_data, mime=True)
+                content_type = self.magic.from_buffer(package_data, mime=True, uncompress=False)
             new_version = {"checksum": filename, "type": content_type, "promoted": False, "created": self.time()}
             self.configurationRepository["packages"][package_name][package_version] = new_version
             self.configurationRepository.sync()

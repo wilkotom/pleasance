@@ -413,3 +413,4 @@ if 'serviceName' in configuration_data:
 # Clean up old version
 if os.path.isdir(configuration_data['targetDirectory'] + '.bak'):
     shutil.rmtree(configuration_data['targetDirectory'] + '.bak')
+

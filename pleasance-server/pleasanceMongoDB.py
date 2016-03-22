@@ -117,7 +117,7 @@ class PleasanceMongo:
 
         if content_type == '':
             try:
-                content_type = self.magic.from_buffer(package_data, mime=True)
+                content_type = self.magic.from_buffer(package_data, mime=True, uncompress=False)
             except self.magic.MagicException as magic_exception:
                 content_type = 'application/octet-stream'
                 self.sys.stderr.write(
