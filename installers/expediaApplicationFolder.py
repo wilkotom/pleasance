@@ -44,6 +44,20 @@ if 'debug' in configuration_data:
 loop_counter = 0
 flattened_dictionary = False
 
+for dictionary_key in configuration_data['deploymentDictionary']:
+    if dictionary_key.endswith('.password'):
+        try:
+            configuration_data['deploymentDictionary'][dictionary_key] = base64.b64decode(
+                configuration_data['deploymentDictionary'][dictionary_key])
+        except TypeError:
+            print('FATAL: ' + dictionary_key + ' cannot be decoded.')
+            exit(1)
+    # Replace double backslashes with single ones
+    if "\\\\" in configuration_data['deploymentDictionary'][dictionary_key]:
+        configuration_data['deploymentDictionary'][dictionary_key] = configuration_data['deploymentDictionary'][
+            dictionary_key].replace('\\\\', '\\')
+
+
 while loop_counter < 10 and not flattened_dictionary:
     dictionary_contents = ''
     loop_counter += 1
@@ -73,18 +87,6 @@ if not flattened_dictionary:
     print('FATAL: Could not flatten dictionary in 10 iterations')
     exit(1)
 
-for dictionary_key in configuration_data['deploymentDictionary']:
-    if dictionary_key.endswith('.password'):
-        try:
-            configuration_data['deploymentDictionary'][dictionary_key] = base64.b64decode(
-                configuration_data['deploymentDictionary'][dictionary_key])
-        except TypeError:
-            print('FATAL: ' + dictionary_key + ' cannot be decoded.')
-            exit(1)
-    # Replace double backslashes with single ones
-    if "\\\\" in configuration_data['deploymentDictionary'][dictionary_key]:
-        configuration_data['deploymentDictionary'][dictionary_key] = configuration_data['deploymentDictionary'][
-            dictionary_key].replace('\\\\', '\\')
 
 if 'serviceName' not in configuration_data:
     print('Warning: No service name defined.')

@@ -41,6 +41,15 @@ if 'debug' in configuration_data:
     elif not isinstance(configuration_data['debug'], bool):
         print('WARNING: debug flag is not boolean. Assuming debug flag is set to false')
 
+for dictionaryKey in configuration_data['deploymentDictionary']:
+    if dictionaryKey.endswith('.password'):
+        try:
+            configuration_data['deploymentDictionary'][dictionaryKey] = base64.b64decode(
+                configuration_data['deploymentDictionary'][dictionaryKey])
+        except TypeError:
+            print('FATAL: ' + dictionaryKey + ' cannot be decoded.')
+            exit(1)
+
 
 # Flatten the dictionary
 loopCounter = 0
@@ -74,15 +83,6 @@ if not flattenedDictionary:
     # TODO: list the dictionary tokens that are still outstanding.
     print('FATAL: Could not flatten dictionary in 10 iterations')
     exit(1)
-
-for dictionaryKey in configuration_data['deploymentDictionary']:
-    if dictionaryKey.endswith('.password'):
-        try:
-            configuration_data['deploymentDictionary'][dictionaryKey] = base64.b64decode(
-                configuration_data['deploymentDictionary'][dictionaryKey])
-        except TypeError:
-            print('FATAL: ' + dictionaryKey + ' cannot be decoded.')
-            exit(1)
 
 if 'serviceName' not in configuration_data:
     print('FATAL: serviceName attribute not defined')
