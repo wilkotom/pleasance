@@ -19,7 +19,7 @@ configuration_file = './environmentSetup'
 debugging_enabled = False
 external_command_output = open('/dev/null', 'w')
 
-suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser']
+suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser', 'zip', 'cacerts']
 
 
 def exit_script(exit_code):
@@ -195,8 +195,8 @@ if 'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuratio
 if 'javaVersion' in configuration_data['deploymentDictionary'] and \
         'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
     print('Checking for Java version ' + configuration_data['deploymentDictionary']['javaVersion'] + ': ', end='')
-    rpmList = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
-    if rpmList.find(configuration_data['deploymentDictionary']['javaVersion']) < 0:
+    rpm_list = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
+    if rpm_list.find(configuration_data['deploymentDictionary']['javaVersion']) < 0:
         print('Not Found. Installing it... ', end='')
         exit_code = subprocess.call(['rpm', '-i', configuration_data['RepositoryURL'] + configuration_data[
             'yumRepositoryPath'] + '/jdk-' + configuration_data['deploymentDictionary']['javaVersion'] +
