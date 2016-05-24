@@ -12,6 +12,8 @@ from time import strftime, localtime
 import web
 
 from pleasanceMongoDB import PleasanceMongo
+from pleasanceShelf import PleasanceShelf
+from slime import Slime
 
 urls = (
     '/dump/?', 'Dump',
@@ -109,13 +111,15 @@ class ConfigurationServiceInstance:  # Get / Update / Delete global Configuratio
             return web.notfound()
 
     def PUT(self, instance_name):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = '' # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+        if not check_auth(username, password):
+            return web.Unauthorized()
         try:
-            auth = web.ctx.env.get('HTTP_AUTHORIZATION')
-            if auth is not None:
-                auth = re.sub('^Basic ', '', auth)
-                username, _ = base64.decodestring(auth).split(':')
-            else:
-                username = 'N/A'
             if pleasance.update_configuration(instance_name, web.ctx.env.get('CONTENT_TYPE'), web.data(), username):
                 return "Updated Environment " + instance_name
         except pleasance.ConfigurationNotJSONError:
@@ -136,6 +140,14 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
             return web.notfound()
 
     def PUT(self, instance_name, node_identifier):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = '' # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+        if not check_auth(username,password):
+            return web.Unauthorized()
         try:
             if pleasance.create_node_configuration(instance_name, node_identifier, web.ctx.env.get('CONTENT_TYPE'),
                                                    web.data()):
@@ -187,6 +199,14 @@ class ConfigurationServiceInstanceHistoricVersion:
         return web.nomethod()
 
     def DELETE(self, instance_name, version):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = ''  # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+        if not check_auth(username, password):
+            return web.Unauthorized()
         try:
             pleasance.delete_historic_version(instance_name, version)
             return 'Configuration ' + version + ' for ' + instance_name + ' deleted'
@@ -341,6 +361,14 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
             return web.notfound()
 
     def DELETE(self, package_name, package_version):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = ''  # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+        if not check_auth(username, password):
+            return web.Unauthorized()
         try:
             if pleasance.delete_package_version(package_name, package_version):
                 return package_name + " version " + package_version + " has been deleted.\n"
@@ -396,7 +424,7 @@ class PackageImportVersion:
         except pleasance.PackageIsPromotedError:
             return web.HTTPError(self, '309 Conflict', 'Content-Type: text/plain',
                                    'Cannot overwrite a promoted package')
-        except zlib.error, ValueError:
+        except (zlib.error, ValueError):
             return web.internalerror('Could not decode package object')
 
 
@@ -455,6 +483,13 @@ class BootstrapServer:
         return bootstrap
 
     def PUT(self, context):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = ''  # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
@@ -466,6 +501,12 @@ class BootstrapServer:
             raise Exception
 
     def DELETE(self, context):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = ''  # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
@@ -526,6 +567,14 @@ class InstallerInstanceSpecific:
             return web.notfound()
 
     def PUT(self, installer_name, target_os):
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+        username = ''  # We need to initialise these to empty values in the case that auth is disabled
+        password = ''
+        if auth is not None:
+            auth = re.sub('^Basic ', '', auth)
+            username, password = base64.decodestring(auth).split(':')
+        if not check_auth(username, password):
+            return web.Unauthorized()
         content_type = ''
         if web.ctx.env.get('CONTENT_TYPE'):
             content_type = web.ctx.env.get('CONTENT_TYPE')
@@ -543,18 +592,42 @@ class InstallerInstanceSpecific:
             return web.notfound()
 
 
+def check_auth(username, password):
+    if configuration["auth_type"] == 'LDAP':
+        if username is not '' and password is not '':
+            try:
+                slime_session.login(username, password)
+                return True
+            except Slime.LDAPBindFailed:
+                return False
+        else:
+            return False
+    elif configuration["auth_type"] == 'disabled':
+        return True
+    else:
+        return False
+
+
 ################################################################################
 # Startup Here
 ################################################################################
 
-############ Settings here  ###################
-# package_repository_location = "./packages"
-# configuration_repository_location = "./Configuration"
-# pleasance = PleasanceShelf(package_repository_location, configuration_repository_location)
-pleasance = PleasanceMongo('localhost', 27017)
+with open('./pleasance.json') as configuration_file:
+    configuration = json.load(configuration_file)
 
+if configuration["auth_type"] == "LDAP":
+    slime_session = Slime(configuration["auth_options"]["ldap_url"],
+                          configuration["auth_options"]["ldap_bind_dn_pattern"])
 
-############### End Settings ##################
+if configuration["storage_type"] == 'MongoDB':
+    pleasance = PleasanceMongo(configuration["storage_options"]["hostname"],
+                               configuration["storage_options"]["port"])
+
+elif configuration["storage_type"] == 'shelve':
+    pleasance = PleasanceShelf(configuration["storage_options"]["package_path"],
+                               configuration["storage_options"]["configuration_path"])
+else:
+    raise Exception
 
 if __name__ == "__main__":
     app.run()

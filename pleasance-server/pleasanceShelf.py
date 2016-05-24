@@ -2,22 +2,22 @@
 
 __author__ = 'twilkinson'
 
+import json
+import os
+import hashlib
+import shelve
+import magic
+from time import time
 
 class PleasanceShelf:
-    import json
-    import os
-    import hashlib
-    import shelve
-    import magic
-    import re
-    from time import time
-    import sys
 
     def __init__(self, package_repository_directory, configuration_database_file):
-        self.configurationRepository = self.shelve.open(configuration_database_file, writeback=True)
+        self.db_file = configuration_database_file
+        self.package_location = package_repository_directory
+        self.configurationRepository = shelve.open(configuration_database_file, writeback=True)
         self.packageRepositoryDirectory = package_repository_directory
-        if not self.os.path.exists(package_repository_directory):
-            self.os.mkdir(package_repository_directory)
+        if not os.path.exists(package_repository_directory):
+            os.mkdir(package_repository_directory)
         if "packages" not in self.configurationRepository:
             self.configurationRepository["packages"] = {}
         if "environments" not in self.configurationRepository:
@@ -27,12 +27,16 @@ class PleasanceShelf:
         if "installers" not in self.configurationRepository:
             self.configurationRepository["installers"] = {}
 
+    def __str__(self):
+        return "Pleasance Shelve instance writing packages to {0} and data to {1}".format(self.package_location,
+                                                                                          self.db_file)
+
     def configuration_objects(self):
         return self.configurationRepository.keys()
 
     def dump_configuration_object(self, object_name):
-        return self.json.dumps(self.configurationRepository[object_name], sort_keys=True, indent=2,
-                               separators=(',', ': '))
+        return json.dumps(self.configurationRepository[object_name], sort_keys=True, indent=2,
+                          separators=(',', ': '))
 
     def list_objects(self, object_type):
         return self.configurationRepository[object_type].keys()
@@ -78,13 +82,13 @@ class PleasanceShelf:
                 self.configurationRepository["packages"][package_name][package_version]["promoted"] = False
             if "created" not in self.configurationRepository["packages"][package_name][package_version]:
                 self.configurationRepository["packages"][package_name][package_version]["created"] = 0.0
-            return self.json.dumps(self.configurationRepository["packages"][package_name][package_version])
+            return json.dumps(self.configurationRepository["packages"][package_name][package_version])
         else:
             raise self.PackageInstanceNotFoundError
 
     def update_package_version(self, package_name, package_version, content_type, package_data):
         if package_name in self.configurationRepository["packages"]:
-            filename = self.hashlib.sha1(package_data).hexdigest()
+            filename = hashlib.sha1(package_data).hexdigest()
             response = ''
             old_file_name = 'NonExistent'
             # Delete the old version, if it exists
@@ -94,8 +98,8 @@ class PleasanceShelf:
                 response += "Deleted " + self.configurationRepository["packages"][package_name][package_version][
                     "checksum"]
                 old_file_name = self.configurationRepository["packages"][package_name][package_version]["checksum"]
-                self.os.rename(self.packageRepositoryDirectory + '/' + old_file_name,
-                               self.packageRepositoryDirectory + '/' + old_file_name + '.old')
+                os.rename(self.packageRepositoryDirectory + '/' + old_file_name,
+                          self.packageRepositoryDirectory + '/' + old_file_name + '.old')
                 # Note: if we have 2 files with the same contents, this will break.
                 # Need a better test to see if a file is OK to release. Periodic garbage collection?
             try:
@@ -104,16 +108,16 @@ class PleasanceShelf:
                 file_handle.close()
                 response += "Created " + package_name + " " + package_version + " with checksum " + filename + '\n'
             except:
-                self.os.rename(self.packageRepositoryDirectory + '/' + old_file_name + '.old',
-                               self.packageRepositoryDirectory + '/' + old_file_name)
+                os.rename(self.packageRepositoryDirectory + '/' + old_file_name + '.old',
+                          self.packageRepositoryDirectory + '/' + old_file_name)
                 raise self.CannotUpdatePackageError
             if content_type == '':
-                content_type = self.magic.from_buffer(package_data, mime=True, uncompress=False)
-            new_version = {"checksum": filename, "type": content_type, "promoted": False, "created": self.time()}
+                content_type = magic.from_buffer(package_data, mime=True, uncompress=False)
+            new_version = {"checksum": filename, "type": content_type, "promoted": False, "created": time()}
             self.configurationRepository["packages"][package_name][package_version] = new_version
             self.configurationRepository.sync()
-            if self.os.path.exists(self.packageRepositoryDirectory + '/' + old_file_name + '.old'):
-                self.os.remove(self.packageRepositoryDirectory + '/' + old_file_name + '.old')
+            if os.path.exists(self.packageRepositoryDirectory + '/' + old_file_name + '.old'):
+                os.remove(self.packageRepositoryDirectory + '/' + old_file_name + '.old')
             response = response + "Current Versions available:" + '\n'.join(
                 self.configurationRepository["packages"][package_name].keys())
             return response
@@ -144,7 +148,7 @@ class PleasanceShelf:
                 if promoted:
                     return False  # Can't delete a promoted build
                 filename = self.configurationRepository["packages"][package_name][package_version]["checksum"]
-                self.os.remove(self.packageRepositoryDirectory + '/' + filename)  # same note as above re: collisions
+                os.remove(self.packageRepositoryDirectory + '/' + filename)  # same note as above re: collisions
                 del self.configurationRepository["packages"][package_name][package_version]
                 self.configurationRepository.sync()
             return True
@@ -154,7 +158,7 @@ class PleasanceShelf:
     def retrieve_configuration(self, instance_name):
         if instance_name in self.configurationRepository["environments"]:
             if "globalConfiguration" in self.configurationRepository["environments"][instance_name]:
-                return self.json.dumps(
+                return json.dumps(
                     self.configurationRepository["environments"][instance_name]["globalConfiguration"],
                     sort_keys=True, indent=2, separators=(',', ': '))
             else:
@@ -165,7 +169,7 @@ class PleasanceShelf:
     def update_configuration(self, instance_name, content_type, payload, _):
         if content_type == "application/json":
             try:
-                configuration_data = self.json.loads(payload)
+                configuration_data = json.loads(payload)
             except ValueError:
                 raise self.ConfigurationNotValidJSONError
             if instance_name in self.configurationRepository["environments"] and "hostOverrides" in \
@@ -192,7 +196,7 @@ class PleasanceShelf:
     def retrieve_node_configuration(self, instance_name, node_name):
         if instance_name in self.configurationRepository["environments"].keys():
             if node_name in self.configurationRepository["environments"][instance_name]["hostOverrides"]:
-                return self.json.dumps(
+                return json.dumps(
                     self.configurationRepository["environments"][instance_name]["hostOverrides"][node_name],
                     sort_keys=True, indent=2, separators=(',', ': '))
             else:
@@ -203,7 +207,7 @@ class PleasanceShelf:
     def create_node_configuration(self, instance_name, node_name, content_type, payload):
         if content_type == "application/json":
             try:
-                configuration_data = self.json.loads(payload)
+                configuration_data = json.loads(payload)
             except ValueError:
                 raise self.ConfigurationNotValidJSONError
             host_overrides = configuration_data
@@ -231,7 +235,7 @@ class PleasanceShelf:
         self.configurationRepository["bootstraps"][bootstrap_name] = {}
         self.configurationRepository["bootstraps"][bootstrap_name]["script"] = bootstrap_data
         if content_type == '':
-            content_type = self.magic.from_buffer(bootstrap_data, mime=True)
+            content_type = magic.from_buffer(bootstrap_data, mime=True)
         self.configurationRepository["bootstraps"][bootstrap_name]["type"] = content_type
         return True
 
@@ -280,8 +284,8 @@ class PleasanceShelf:
         old_filename = ''
         if installer_name in self.configurationRepository["installers"]:
             if content_type == '':
-                content_type = self.magic.from_buffer(installer_data, mime=True)
-            filename = self.hashlib.sha1(installer_data).hexdigest()
+                content_type = magic.from_buffer(installer_data, mime=True)
+            filename = hashlib.sha1(installer_data).hexdigest()
             if target_os in self.configurationRepository["installers"][installer_name].keys():
                 old_filename = self.configurationRepository["installers"][installer_name][target_os]["checksum"]
                 if old_filename == filename:
@@ -290,7 +294,7 @@ class PleasanceShelf:
             file_handle.write(installer_data)
             file_handle.close()
             if old_filename != '':
-                self.os.remove(self.packageRepositoryDirectory + '/' + old_filename)
+                os.remove(self.packageRepositoryDirectory + '/' + old_filename)
             self.configurationRepository["installers"][installer_name][target_os] = {'checksum': filename,
                                                                                      'type': content_type}
             self.configurationRepository.sync()
@@ -302,7 +306,7 @@ class PleasanceShelf:
         if installer_name in self.configurationRepository["installers"]:
             if target_os in self.configurationRepository["installers"][installer_name]:
                 filename = self.configurationRepository["installers"][installer_name][target_os]["checksum"]
-                self.os.remove(filename)
+                os.remove(filename)
                 del self.configurationRepository["installers"][installer_name][target_os]
                 self.configurationRepository.sync()
             return True
