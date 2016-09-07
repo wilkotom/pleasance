@@ -126,7 +126,7 @@ class PleasanceMongo:
 
         if content_type == '':
             try:
-                content_type = magic.from_buffer(package_data, mime=True, uncompress=False)
+                content_type = magic.from_buffer(package_data[:1024], mime=True)
             except magic.MagicException as magic_exception:
                 content_type = 'application/octet-stream'
                 sys.stderr.write(
@@ -164,7 +164,7 @@ class PleasanceMongo:
             self.packages.insert(new_metadata)
         return True
 
-    def promote_package_version(self, package_name, package_version, promotion_flag):
+    def set_promotion_flag(self, package_name, package_version, promotion_flag):
         """Sets a given package version's promotion flag. Promoted packages cannot be updated or deleted"""
         package = self.packages.find_one({"name": package_name, "version": package_version})
         if package is not None:
@@ -410,7 +410,7 @@ class PleasanceMongo:
             self.installers.insert(installer_object)
         else:
             old_file_id = existing_installer['file_id']
-            self.installers.remove({'name': installer_name})
+            self.installers.remove({'name': installer_name, 'platform': target_os})
             self.installers.insert(installer_object)
             self.filestore.delete(old_file_id)
         return True

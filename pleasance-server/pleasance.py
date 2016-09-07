@@ -6,11 +6,9 @@ __author__ = 'twilkinson'
 import json
 import re
 import base64
+import web
 import zlib
 from time import strftime, localtime
-
-import web
-
 from pleasanceMongoDB import PleasanceMongo
 from pleasanceShelf import PleasanceShelf
 from slime import Slime
@@ -115,8 +113,11 @@ class ConfigurationServiceInstance:  # Get / Update / Delete global Configuratio
         username = '' # We need to initialise these to empty values in the case that auth is disabled
         password = ''
         if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
+            try:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+            except ValueError:
+                return web.unauthorized()
         if not check_auth(username, password):
             return web.Unauthorized()
         try:
@@ -203,10 +204,13 @@ class ConfigurationServiceInstanceHistoricVersion:
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
         if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
+            try:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+            except ValueError:
+                return web.unauthorized()
         if not check_auth(username, password):
-            return web.Unauthorized()
+            return web.unauthorized()
         try:
             pleasance.delete_historic_version(instance_name, version)
             return 'Configuration ' + version + ' for ' + instance_name + ' deleted'
@@ -307,14 +311,14 @@ class PackageInstancesInfo:
 
 class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
     def GET(self, package_name, package_version):
-        return self.PromotePackageVersion(package_name, package_version)
+        return self.promote_package_version(package_name, package_version)
 
     def POST(self, package_name, package_version):
-        return self.PromotePackageVersion(package_name, package_version)
+        return self.promote_package_version(package_name, package_version)
 
-    def PromotePackageVersion(self, package_name, package_version):
+    def promote_package_version(self, package_name, package_version):
         try:
-            if pleasance.promote_package_version(package_name, package_version, True):
+            if pleasance.set_promotion_flag(package_name, package_version, True):
                 return "Promoted " + package_name + " version " + package_version
         except pleasance.PackageNotFoundError:
             return web.notfound()
@@ -324,14 +328,14 @@ class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned u
 
 class PackageVersionUnpromote:  # Flag a package for automatic deletion
     def GET(self, package_name, package_version):
-        return self.UnpromotePackageVersion(package_name, package_version)
+        return self.unpromote_package_version(package_name, package_version)
 
     def POST(self, package_name, package_version):
-        return self.UnpromotePackageVersion(package_name, package_version)
+        return self.unpromote_package_version(package_name, package_version)
 
-    def UnpromotePackageVersion(self, package_name, package_version):
+    def unpromote_package_version(self, package_name, package_version):
         try:
-            if pleasance.promote_package_version(package_name, package_version, False):
+            if pleasance.set_promotion_flag(package_name, package_version, False):
                 return "Unpromoted " + package_name + " version " + package_version
         except pleasance.PackageNotFoundError:
             return web.notfound()
@@ -364,9 +368,12 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
-        if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
+        try:
+            if auth is not None:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+        except ValueError:
+            return web.Unauthorized()
         if not check_auth(username, password):
             return web.Unauthorized()
         try:
@@ -487,9 +494,13 @@ class BootstrapServer:
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
         if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
-
+            try:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+            except ValueError:
+                return web.unauthorized()
+        if not check_auth(username, password):
+            return web.unauthorized()
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
@@ -505,14 +516,21 @@ class BootstrapServer:
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
         if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
+            try:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+            except ValueError:
+                return web.Unauthorized()
+        if not check_auth(username, password):
+            return web.Unauthorized()
         if context.lstrip('/').split('/').__len__() > 1:
             return web.badrequest(context + " " + str(context.lstrip('/').split('/')) + " greater than 1")
         else:
-            if pleasance.delete_bootstrap(context):
-                return "Deleted Bootstrap " + context
-
+            try:
+                if pleasance.delete_bootstrap(context):
+                    return "Deleted Bootstrap " + context
+            except pleasance.BootStrapNotFoundError:
+                return web.notfound()
 
 ################################################################################
 # Installers: container-specific installers go here
@@ -570,11 +588,14 @@ class InstallerInstanceSpecific:
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
-        if auth is not None:
-            auth = re.sub('^Basic ', '', auth)
-            username, password = base64.decodestring(auth).split(':')
+        try:
+            if auth is not None:
+                auth = re.sub('^Basic ', '', auth)
+                username, password = base64.decodestring(auth).split(':')
+        except ValueError:
+            return web.unauthorized()
         if not check_auth(username, password):
-            return web.Unauthorized()
+            return web.unauthorized()
         content_type = ''
         if web.ctx.env.get('CONTENT_TYPE'):
             content_type = web.ctx.env.get('CONTENT_TYPE')

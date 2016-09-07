@@ -57,7 +57,6 @@ for dictionary_key in configuration_data['deploymentDictionary']:
         configuration_data['deploymentDictionary'][dictionary_key] = configuration_data['deploymentDictionary'][
             dictionary_key].replace('\\\\', '\\')
 
-
 while loop_counter < 10 and not flattened_dictionary:
     dictionary_contents = ''
     loop_counter += 1
@@ -135,7 +134,6 @@ for dir_path, dir_name, file_names in os.walk(configuration_data['targetDirector
         elif debugging_enabled is True:
             print('DEBUG: Blackisted suffix. Not scanning placeholders in file: ' + dir_path + '/' + filename)
 
-
 found_tokens = []
 templated_files = []
 
@@ -193,16 +191,18 @@ if 'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuratio
 
 # Install Java
 if 'javaVersion' in configuration_data['deploymentDictionary'] and \
-        'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
+                'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
     print('Checking for Java version ' + configuration_data['deploymentDictionary']['javaVersion'] + ': ', end='')
     rpmList = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
     if rpmList.find(configuration_data['deploymentDictionary']['javaVersion']) < 0:
         print('Not Found. Installing it... ', end='')
         exit_code = subprocess.call(['rpm', '-i', configuration_data['RepositoryURL'] + configuration_data[
             'yumRepositoryPath'] + '/jdk-' + configuration_data['deploymentDictionary']['javaVersion'] +
-            '-fcs.x86_64.rpm', '--oldpackage', '--relocate',
-            '/etc/init.d/jexec=/etc/init.d/jexec-' + configuration_data['deploymentDictionary'][
-            'javaVersion'], '--badreloc'], stdout=external_command_output, stderr=external_command_output)
+                                     '-fcs.x86_64.rpm', '--oldpackage', '--relocate',
+                                     '/etc/init.d/jexec=/etc/init.d/jexec-' +
+                                     configuration_data['deploymentDictionary'][
+                                         'javaVersion'], '--badreloc'], stdout=external_command_output,
+                                    stderr=external_command_output)
         if exit_code == 0:
             if debugging_enabled is True:
                 external_command_output.seek(0)
@@ -216,8 +216,8 @@ if 'javaVersion' in configuration_data['deploymentDictionary'] and \
         for CACert in ['ExpediaRootCA', 'ExpediaInternal1C']:
             print('Adding ' + CACert + ' certificate to trust store: ', end='')
             certificate_fetch = subprocess.Popen(
-                    ['curl', '-k', '-s', configuration_data['RepositoryURL'] + configuration_data[
-                        'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                ['curl', '-k', '-s', configuration_data['RepositoryURL'] + configuration_data[
+                    'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             certResponseBody = certificate_fetch.communicate()[0]
             if certificate_fetch.returncode != 0:
                 print('FAILED. Could not fetch certificate at ' + configuration_data['RepositoryURL'] +
@@ -252,7 +252,7 @@ if 'javaVersion' in configuration_data['deploymentDictionary'] and \
 
 # Install Tomcat
 if 'tomcatVersion' in configuration_data['deploymentDictionary'] and \
-        'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
+                'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
     print('Checking for Tomcat version ' + configuration_data['deploymentDictionary']['tomcatVersion'] + ': ', end='')
     if subprocess.call(
             ['rpm', '-q', 'tomcat-deployit' + '-' + configuration_data['deploymentDictionary']['tomcatVersion']],
@@ -306,7 +306,7 @@ if os.path.exists('/etc/cron.d/update_pdnsd.cron'):
 # Create SSL Certificates
 
 if 'certificatePath' in configuration_data and \
-        'certificateName' in configuration_data and 'certificatePassPhrase' in configuration_data:
+                'certificateName' in configuration_data and 'certificatePassPhrase' in configuration_data:
     print('Updating certificate: ' + configuration_data['certificateName'] + ' ', end='')
     decodedPassPhrase = ''
     try:
@@ -408,9 +408,6 @@ if 'serviceName' in configuration_data:
         print(external_command_output.read())
         external_command_output.truncate(0)
 
-
-
 # Clean up old version
 if os.path.isdir(configuration_data['targetDirectory'] + '.bak'):
     shutil.rmtree(configuration_data['targetDirectory'] + '.bak')
-

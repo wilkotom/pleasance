@@ -128,7 +128,7 @@ class PleasanceShelf:
         self.configurationRepository["packages"][package_name][package_version] = new_metadata
         return True
 
-    def promote_package_version(self, package_name, package_version, promotion_flag):
+    def set_promotion_flag(self, package_name, package_version, promotion_flag):
         if package_name in self.configurationRepository["packages"]:
             if package_version in self.configurationRepository["packages"][package_name]:
                 self.configurationRepository["packages"][package_name][package_version]["promoted"] = promotion_flag
