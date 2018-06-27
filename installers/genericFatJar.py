@@ -8,7 +8,6 @@ import base64
 import os
 import shutil
 import sys
-import pwd
 from tempfile import TemporaryFile
 
 reload(sys)
@@ -20,7 +19,7 @@ debugging_enabled = False
 external_command_output = open('/dev/null', 'w')
 devnull = open('/dev/null', 'w')
 package_modified = False
-templatedFiles = []
+templated_files = []
 
 suffix_blacklist = ['ar', 'class', 'jks', 'pfx', 'ser']
 
@@ -68,12 +67,12 @@ while loop_counter < 10 and not flattened_dictionary:
                                                                             token])
                 else:
                     print('FATAL: Undefined Dictionary key ' + token)
-                    exit(1)
+                    exit_script(1)
 
 if not flattened_dictionary:
     # TODO: list the dictionary tokens that are still outstanding.
     print('FATAL: Could not flatten dictionary in 10 iterations')
-    exit(1)
+    exit_script(1)
 
 for dictionary_key in configuration_data['deploymentDictionary']:
     if dictionary_key.endswith('.password'):
@@ -82,41 +81,41 @@ for dictionary_key in configuration_data['deploymentDictionary']:
                 configuration_data['deploymentDictionary'][dictionary_key])
         except TypeError:
             print('FATAL: ' + dictionary_key + ' cannot be decoded.')
-            exit(1)
+            exit_script(1)
 
 if 'serviceName' not in configuration_data:
     print('FATAL: serviceName attribute not defined')
-    exit(1)
+    exit_script(1)
 
 if 'jarName' not in configuration_data:
     print('FATAL: Jar Name not defined')
-    exit(1)
+    exit_script(1)
 
 if 'instanceProperties' not in configuration_data:
     print('FATAL: Instance Properties not specified')
-    exit(1)
+    exit_script(1)
 
 if 'serviceUser' not in configuration_data:
     configuration_data['serviceUser'] = configuration_data['serviceName']
 
-startServiceCommand = ['/sbin/service', configuration_data['serviceName'], 'start']
-stopServiceCommand = ['/sbin/service', configuration_data['serviceName'], 'stop']
+start_service_command = ['/sbin/service', configuration_data['serviceName'], 'start']
+stop_service_command = ['/sbin/service', configuration_data['serviceName'], 'stop']
 
 if 'serviceInstance' in configuration_data:
-    startServiceCommand.append(configuration_data['serviceInstance'])
-    stopServiceCommand.append(configuration_data['serviceInstance'])
+    start_service_command.append(configuration_data['serviceInstance'])
+    stop_service_command.append(configuration_data['serviceInstance'])
     configuration_data['targetDirectory'] += '/' + configuration_data['serviceInstance']
 
-instanceProperties = subprocess.Popen(['curl', '-k', '-s', configuration_data['instanceProperties']],
-                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+instance_properties = subprocess.Popen(['curl', '-k', '-s', configuration_data['instanceProperties']],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-instancePropertiesText = instanceProperties.communicate()[0]
-if instanceProperties.returncode != 0:
+instance_properties_text = instance_properties.communicate()[0]
+if instance_properties.returncode != 0:
     print("FATAL: Couldn't fetch " + configuration_data['instanceProperties'])
-    exit(1)
-instancePropertiesFileHandle = open('./instance.properties', 'w')
-instancePropertiesFileHandle.write(instancePropertiesText)
-instancePropertiesFileHandle.close()
+    exit_script(1)
+instance_properties_file_handle = open('./instance.properties', 'w')
+instance_properties_file_handle.write(instance_properties_text)
+instance_properties_file_handle.close()
 
 # Delete any aborted previous installation
 if os.path.isdir(configuration_data['targetDirectory'] + '.new'):
@@ -125,28 +124,28 @@ if os.path.isdir(configuration_data['targetDirectory'] + '.new'):
 
 try:
     os.mkdir('./explodedJar')
-    packageZip = zipfile.ZipFile('./packagefile', 'r')
-    packageZip.extractall('./explodedJar')
-    packageZip.close()
+    package_zip = zipfile.ZipFile('./packagefile', 'r')
+    package_zip.extractall('./explodedJar')
+    package_zip.close()
 except zipfile.BadZipfile:
     print('FATAL: Package supplied does not appear to be a Zip archive.')
-    exit(1)
+    exit_script(1)
 
 packageFiles = []
-for dirPath, dirName, fileNames in os.walk('./explodedJar'):
-    for fileName in fileNames:
+for dir_path, dir_name, file_names in os.walk('./explodedJar'):
+    for file_name in file_names:
         blacklisted = False
         for suffix in suffix_blacklist:
-            if fileName.endswith(suffix):
+            if file_name.endswith(suffix):
                 blacklisted = True
         if blacklisted is False:
-            packageFiles.append(dirPath + '/' + fileName)
+            packageFiles.append(dir_path + '/' + file_name)
         elif debugging_enabled is True:
-            print('DEBUG: Blackisted suffix. Not scanning placeholders in file: ' + dirPath + '/' + fileName)
+            print('DEBUG: Blackisted suffix. Not scanning placeholders in file: ' + dir_path + '/' + file_name)
 
-foundTokens = []
+found_tokens = []
 
-templatedFiles.append('./instance.properties')
+templated_files.append('./instance.properties')
 
 for templatedFile in packageFiles:
     if debugging_enabled is True:
@@ -156,30 +155,30 @@ for templatedFile in packageFiles:
     for token in fileContents.split('}}'):
         if token.find('{{') >= 0:
             token_list.append(token.partition('{{')[2])
-            templatedFiles.append(templatedFile)
+            templated_files.append(templatedFile)
             if debugging_enabled is True:
                 print('DEBUG:     Found templated value: ' + token.partition('{{')[2])
 
-    foundTokens = foundTokens + token_list
+    found_tokens = found_tokens + token_list
 
-templatedFiles = list(set(templatedFiles))  # remove duplicate entreies
+templated_files = list(set(templated_files))  # remove duplicate entreies
 
-foundTokens = (list(set(foundTokens)))  # Remove duplicates
-if '' in foundTokens:
-    foundTokens.remove('')  # remove the empty token, if present
+found_tokens = (list(set(found_tokens)))  # Remove duplicates
+if '' in found_tokens:
+    found_tokens.remove('')  # remove the empty token, if present
 
-foundTokensCopy = list(foundTokens)  # Don't manipulate a data structure while you're iterating over it...
+found_tokens_copy = list(found_tokens)  # Don't manipulate a data structure while you're iterating over it...
 
-for token in foundTokensCopy:
+for token in found_tokens_copy:
     if token in configuration_data['deploymentDictionary']:
-        foundTokens.remove(token)
+        found_tokens.remove(token)
 
-if foundTokens:
+if found_tokens:
     print('The following tokens could not be expanded: ', end='')
-    for token in foundTokens:
+    for token in found_tokens:
         print(token + ', ', end='')
     print('')
-    exit(1)
+    exit_script(1)
 # If we get this far, we've been able to flatten the dictionary, and ensure that all tokens can be expanded.
 # We can go ahead and install.
 
@@ -198,9 +197,9 @@ if 'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuratio
     repofile = open('/etc/yum.repos.d/delite.repo', 'w')
     repofile.write(yum_repo_definition)
     repofile.close()
-    if subprocess.call(['yum', 'clean', 'all'], stdout=devnull, stderr=devnull) != 0:
-        print('DEBUG: Failed to clean yum caches')
-        exit(1)
+    if subprocess.call(['yum', 'clean', 'all'], stdout=external_command_output, stderr=external_command_output) != 0:
+        print('FATAL: Failed to clean yum caches')
+        exit_script(1)
     else:
         if debugging_enabled is True:
             print('DEBUG: Successfully cleared yum caches')
@@ -209,59 +208,59 @@ if 'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuratio
 if 'javaVersion' in configuration_data['deploymentDictionary'] and \
                 'yumRepositoryPath' in configuration_data and 'RepositoryURL' in configuration_data:
     print('Checking for Java version ' + configuration_data['deploymentDictionary']['javaVersion'] + ': ', end='')
-    rpmList = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
-    if rpmList.find(configuration_data['deploymentDictionary']['javaVersion']) < 0:
+    rpm_list = subprocess.Popen(['rpm', '-qa'], stdout=subprocess.PIPE).communicate()[0]
+    if rpm_list.find(configuration_data['deploymentDictionary']['javaVersion']) < 0:
         print('Not Found. Installing it... ', end='')
-        exitCode = subprocess.call(['rpm', '-i', configuration_data['RepositoryURL'] + configuration_data[
+        exit_code = subprocess.call(['rpm', '-i', configuration_data['RepositoryURL'] + configuration_data[
             'yumRepositoryPath'] + '/jdk-' + configuration_data['deploymentDictionary']['javaVersion'] +
                                     '-fcs.x86_64.rpm', '--oldpackage', '--relocate',
                                     '/etc/init.d/jexec=/etc/init.d/jexec-' +
-                                    configuration_data['deploymentDictionary']['javaVersion'], '--badreloc'],
-                                   stdout=devnull, stderr=devnull)
-        if exitCode == 0:
+                                     configuration_data['deploymentDictionary']['javaVersion'], '--badreloc'],
+                                    stdout=external_command_output, stderr=external_command_output)
+        if exit_code == 0:
             print('OK')
         else:
             print('Failed')
             exit(1)
-        for CACert in ['ExpediaRootCA', 'ExpediaInternal1C', 'ExpediaRoot2015', 'ExpediaInternal1C2015']:
-            print('Adding ' + CACert + ' certificate to trust store: ', end='')
-            certRequest = subprocess.Popen(
+        for ca_cert in ['ExpediaRootCA', 'ExpediaInternal1C', 'ExpediaRoot2015', 'ExpediaInternal1C2015']:
+            print('Adding ' + ca_cert + ' certificate to trust store: ', end='')
+            cert_request = subprocess.Popen(
                 ['curl', '-k', '-s', configuration_data['RepositoryURL'] + configuration_data[
-                    'certificatePath'] + '/' + CACert + '.crt'], stdout=subprocess.PIPE,
+                    'certificatePath'] + '/' + ca_cert + '.crt'], stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE)
-            certResponseBody = certRequest.communicate()[0]
-            if certRequest.returncode != 0:
+            cert_response_body = cert_request.communicate()[0]
+            if cert_request.returncode != 0:
                 print('FAILED. Could not fetch certificate at ' + configuration_data['RepositoryURL'] +
-                      configuration_data['certificatePath'] + '/' + CACert + '.crt')
-                print('curl return code was: ' + str(certRequest.returncode))
+                      configuration_data['certificatePath'] + '/' + ca_cert + '.crt')
+                print('curl return code was: ' + str(cert_request.returncode))
                 print('curl errors follow: ')
-                print(certRequest.communicate()[1])
+                print(cert_request.communicate()[1])
                 exit(1)
-            certificateFileHandle = open('./' + CACert + '.crt', 'w')
-            certificateFileHandle.write(certResponseBody)
-            certificateFileHandle.close()
+            certificate_file_handle = open('./' + ca_cert + '.crt', 'w')
+            certificate_file_handle.write(cert_response_body)
+            certificate_file_handle.close()
             if subprocess.call(['/usr/java/jdk' + configuration_data['deploymentDictionary']['javaVersion'] +
                                 '/bin/keytool', '-import', '-keystore', '/usr/java/jdk' +
                                 configuration_data['deploymentDictionary']['javaVersion'] +
                                 '/jre/lib/security/cacerts', '-storepass', 'changeit', '-noprompt', '-file',
-                                './' + CACert + '.crt', '-alias', CACert], stdout=devnull, stderr=devnull) != 0:
+                                './' + ca_cert + '.crt', '-alias', ca_cert], stdout=external_command_output, stderr=external_command_output) != 0:
                 print('FAILED')
-                exit(1)
+                exit_script(1)
             print('OK')
     else:
         print('Found.')
 
 # Install RPM dependencies
 
-for rpmName in configuration_data['packagesRequired']:
-    if subprocess.call(['rpm', '-q', rpmName], stdout=devnull, stderr=devnull) != 0:
+for rpm_name in configuration_data['packagesRequired']:
+    if subprocess.call(['rpm', '-q', rpm_name], stdout=external_command_output, stderr=external_command_output) != 0:
         yum_action = 'install'
     else:
         yum_action = 'upgrade'
-    print('Updating RPM: ' + rpmName)
-    if subprocess.call(['yum', '-y', yum_action, rpmName], stdout=devnull, stderr=devnull) != 0:
-        print('Failed to ' + yum_action + ' ' + rpmName)
-        exit(1)
+    print('Updating RPM: ' + rpm_name)
+    if subprocess.call(['yum', '-y', yum_action, rpm_name], stdout=external_command_output, stderr=external_command_output) != 0:
+        print('FATAL: Failed to ' + yum_action + ' ' + rpm_name)
+        exit_script(1)
 
 # Clean up unwanted cron entry
 
@@ -274,37 +273,37 @@ if os.path.exists('/etc/cron.d/update_pdnsd.cron'):
 if 'certificatePath' in configuration_data and 'certificateName' in configuration_data and \
                 'certificatePassPhrase' in configuration_data:
     print('Updating certificate: ' + configuration_data['certificateName'] + ' ', end='')
-    decodedPassPhrase = ''
+    decoded_pass_phrase = ''
     try:
-        decodedPassPhrase = base64.b64decode(configuration_data['certificatePassPhrase'])
+        decoded_pass_phrase = base64.b64decode(configuration_data['certificatePassPhrase'])
     except TypeError:
         print('FATAL: Passphrase cannot be decoded.')
-        exit(1)
-    certRequest = subprocess.Popen(['curl', '-k', '-s', '--user', configuration_data['certificateName'] + ':' +
-                                    decodedPassPhrase,
-                                    configuration_data['RepositoryURL'] + configuration_data['certificatePath'] + '/' +
-                                    configuration_data['certificateName']], stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-    certificateContents = certRequest.communicate()[0]
-    if certRequest.returncode != 0:
+        exit_script(1)
+    cert_request = subprocess.Popen(['curl', '-k', '-s', '--user', configuration_data['certificateName'] + ':' +
+                                     decoded_pass_phrase,
+                                     configuration_data['RepositoryURL'] + configuration_data['certificatePath'] + '/' +
+                                     configuration_data['certificateName']], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE)
+    certificate_contents = cert_request.communicate()[0]
+    if cert_request.returncode != 0:
         print('FAILED. Could not fetch certificate at ' + configuration_data['RepositoryURL'] +
               configuration_data['certificatePath'] + '/' + configuration_data['certificateName'])
-        print('curl return code was: ' + str(certRequest.returncode))
+        print('curl return code was: ' + str(cert_request.returncode))
         print('curl errors follow:')
-        print(certRequest.communicate()[1])
+        print(cert_request.communicate()[1])
         exit(1)
     if not os.path.isdir('/opt/expedia/security'):
         if os.path.exists('/opt/expedia/security'):
             print('FATAL: /opt/expedia/security exists and is not a directory')
-            exit(1)
+            exit_script(1)
         else:
             os.mkdir('/opt/expedia/security')
-    certificateFileHandle = open('/opt/expedia/security/' + configuration_data['certificateName'], 'w')
-    certificateFileHandle.write(certificateContents)
-    certificateFileHandle.close()
+    certificate_file_handle = open('/opt/expedia/security/' + configuration_data['certificateName'], 'w')
+    certificate_file_handle.write(certificate_contents)
+    certificate_file_handle.close()
     print('OK')
 
-for templatedfileName in templatedFiles:
+for templatedfileName in templated_files:
     if debugging_enabled is True:
         print('DEBUG: Replacing templated values in ' + templatedfileName)
     template = open(templatedfileName, 'r')
@@ -339,8 +338,8 @@ if package_modified is True:
         configuration_data['targetDirectory'] + '.new' + '/bin/' + configuration_data['jarName'], 'w')
     for dirname, subdirs, files in os.walk('./'):
         targetJar.write(dirname)
-        for fileName in files:
-            targetJar.write(os.path.join(dirname, fileName))
+        for file_name in files:
+            targetJar.write(os.path.join(dirname, file_name))
     targetJar.close()
 else:
     if debugging_enabled is True:
@@ -358,9 +357,9 @@ if 'serviceName' in configuration_data:
     print('Stopping ' + configuration_data['serviceName'] + ' ', end='')
     if 'serviceInstance' in configuration_data:
         print('instance ' + configuration_data['serviceInstance'], end='')
-    if subprocess.call(stopServiceCommand, stdout=devnull, stderr=devnull) != 0:
+    if subprocess.call(stop_service_command, stdout=external_command_output, stderr=external_command_output) != 0:
         print(': FAILED')
-        exit(1)
+        exit_script(1)
     print(': OK')
 
 # Delete old backups, if any
@@ -382,9 +381,9 @@ if 'serviceName' in configuration_data:
     print('Starting ' + configuration_data['serviceName'] + ' ', end='')
     if 'serviceInstance' in configuration_data:
         print('instance ' + configuration_data['serviceInstance'], end='')
-    if subprocess.call(startServiceCommand, stdout=devnull, stderr=devnull) != 0:
+    if subprocess.call(start_service_command, stdout=external_command_output, stderr=external_command_output) != 0:
         print(': FAILED')
-        exit(1)
+        exit_script(1)
     print(': OK')
 
 # Clean up old version
