@@ -17,26 +17,26 @@ urls = (
     '/dump/?', 'Dump',
     '/dump/(.*)$', 'DumpObject',
     '/package(s|info|export)/?', 'ShowAllPackages',
-    '/packages/([A-Za-z0-9\-_]*)/?$', 'PackageInstances',
-    '/packages/([A-Za-z0-9\-_]*)/(.*)/export/?$', 'PackageExportVersion',
-    '/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
-    '/packageinfo/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
-    '/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
-    '/packageexport/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
-    '/packageexport/([A-Za-z0-9\-_]*)/(.*)', 'PackageExportVersion',
+    r'/packages/([A-Za-z0-9\-_]*)/?$', 'PackageInstances',
+    r'/packages/([A-Za-z0-9\-_]*)/(.*)/export/?$', 'PackageExportVersion',
+    r'/packages/([A-Za-z0-9\-_]*)/(.*)', 'PackageInstanceVersions',
+    r'/packageinfo/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
+    r'/packageinfo/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionInfo',
+    r'/packageexport/([A-Za-z0-9\-_]*)/?$', 'PackageInstancesInfo',
+    r'/packageexport/([A-Za-z0-9\-_]*)/(.*)', 'PackageExportVersion',
     '/packageimport', 'PackageImportVersion',
-    '/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
-    '/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
+    r'/promote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionPromote',
+    r'/unpromote/([A-Za-z0-9\-_]*)/(.*)', 'PackageVersionUnpromote',
     '/configuration/?$', 'Configuration',
-    '/configuration/([A-Za-z0-9\-_]*)$', 'ConfigurationServiceInstance',  # eg /configuration/eqc-pm-service-int
-    '/configuration/([A-Za-z0-9\-_]*)/history/?$', 'ConfigurationServiceInstanceHistory',
-    '/configuration/([A-Za-z0-9\-_]*)/history/(.*)$', 'ConfigurationServiceInstanceHistoricVersion',
-    '/configuration/([A-Za-z0-9\-_]*)/(.*)', 'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
+    r'/configuration/([A-Za-z0-9\-_]*)$', 'ConfigurationServiceInstance',  # eg /configuration/eqc-pm-service-int
+    r'/configuration/([A-Za-z0-9\-_]*)/history/?$', 'ConfigurationServiceInstanceHistory',
+    r'/configuration/([A-Za-z0-9\-_]*)/history/(.*)$', 'ConfigurationServiceInstanceHistoricVersion',
+    r'/configuration/([A-Za-z0-9\-_]*)/(.*)', 'ConfigurationServiceInstanceHosts',  # eg ...-int/cheiconeqc001-95
     '/bootstrap/?$', 'BootStrap',
     '/bootstrap/(.*)', 'BootstrapServer',  # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
     '/installer/?$', 'Installers',
-    '/installer/([A-Za-z0-9\-_]*)$', 'InstallerInstances',  # /installer/expediaApplicationFolder
-    '/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific',  # /installer/expediaApplicationFolder/linux
+    r'/installer/([A-Za-z0-9\-_]*)$', 'InstallerInstances',  # /installer/expediaApplicationFolder
+    r'/installer/([A-Za-z0-9\-_]*)/(.*)', 'InstallerInstanceSpecific',  # /installer/expediaApplicationFolder/linux
     '/(.*)', 'PrintBadURL'
 )
 
@@ -50,7 +50,8 @@ app = web.application(urls, globals())
 ###############################################################################
 
 class PrintBadURL:
-    def GET(self, uri):
+    @staticmethod
+    def GET(uri):
         output = 'Calling URI:' + uri + '\n'
         for setting in web.ctx.env:
             output = output + setting + ' ' + str(web.ctx.env[setting]) + '\n'
@@ -63,7 +64,8 @@ class PrintBadURL:
 ###############################################################################
 
 class Dump:
-    def GET(self):
+    @staticmethod
+    def GET():
         web.header('Content-Type', 'text/html')
         response = "<html><head><title>Available Objects</title></head><body>"
         for objectName in pleasance.configuration_objects():
@@ -73,7 +75,8 @@ class Dump:
 
 
 class DumpObject:
-    def GET(self, object_name):
+    @staticmethod
+    def GET(object_name):
         object_name = str(object_name)
         web.header('Content-Type', 'application/json')
         web.header('X-Object-Name', object_name)
@@ -85,7 +88,8 @@ class DumpObject:
 ##############################################################################
 
 class Configuration:  # List available configurations (aka service instances)
-    def GET(self):
+    @staticmethod
+    def GET():
         response = ''
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
             web.header('Content-Type', 'application/json')
@@ -101,14 +105,16 @@ class Configuration:  # List available configurations (aka service instances)
 
 
 class ConfigurationServiceInstance:  # Get / Update / Delete global Configuration for a given service instance
-    def GET(self, instance_name):
+    @staticmethod
+    def GET(instance_name):
         try:
             web.header('Content-Type', 'application/json')
             return pleasance.retrieve_configuration(instance_name)
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
-    def PUT(self, instance_name):
+    @staticmethod
+    def PUT(instance_name):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = '' # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -128,18 +134,22 @@ class ConfigurationServiceInstance:  # Get / Update / Delete global Configuratio
         except pleasance.ConfigurationNotValidJSONError:
             return web.badrequest('Could not parse the JSON supplied')
 
-    def DELETE(self, instance_name):
+    @staticmethod
+    def DELETE(instance_name):
         return pleasance.delete_configuration(instance_name)
 
 
 class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual server Configuration for a given instance
-    def GET(self, instance_name, node_identifier):
+
+    @staticmethod
+    def GET(instance_name, node_identifier):
         try:
             web.header('Content-Type', 'application/json')
             return pleasance.retrieve_node_configuration(instance_name, node_identifier)
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
+    @staticmethod
     def PUT(self, instance_name, node_identifier):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = '' # We need to initialise these to empty values in the case that auth is disabled
@@ -158,7 +168,8 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
         except pleasance.ConfigurationNotValidJSONError:
             return web.badrequest('Could not parse the JSON supplied')
 
-    def DELETE(self, instance_name, node_identifier):
+    @staticmethod
+    def DELETE(instance_name, node_identifier):
         try:
             if pleasance.delete_node_configuration(instance_name, node_identifier):
                 return "Deleted " + node_identifier + " from " + instance_name
@@ -167,7 +178,9 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
 
 
 class ConfigurationServiceInstanceHistory:
-    def GET(self, instance_name):
+
+    @staticmethod
+    def GET(instance_name):
         response = ''
         instance_history = pleasance.service_instance_configuration_history(instance_name)
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
@@ -187,7 +200,9 @@ class ConfigurationServiceInstanceHistory:
 
 
 class ConfigurationServiceInstanceHistoricVersion:
-    def GET(self, instance_name, version):
+
+    @staticmethod
+    def GET(instance_name, version):
         try:
             web.header('Content-Type', 'application/json')
             historic_version = pleasance.service_instance_historic_version(instance_name, version)['content']
@@ -196,10 +211,12 @@ class ConfigurationServiceInstanceHistoricVersion:
         except pleasance.EnvironmentNotFoundError:
             return web.notfound()
 
-    def PUT(self, instance_name, version):
+    @staticmethod
+    def PUT(instance_name, version):
         return web.nomethod()
 
-    def DELETE(self, instance_name, version):
+    @staticmethod
+    def DELETE(instance_name, version):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -223,7 +240,8 @@ class ConfigurationServiceInstanceHistoricVersion:
 ################################################################################
 
 class ShowAllPackages:
-    def GET(self, path_identifier):  # List available packages
+    @staticmethod
+    def GET(path_identifier):  # List available packages
         response = ''
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
             web.header('Content-Type', 'application/json')
@@ -239,7 +257,8 @@ class ShowAllPackages:
 
 
 class PackageInstances:  # create / delete new package, list available package versions
-    def GET(self, package_name):
+    @staticmethod
+    def GET(package_name):
         if package_name in pleasance.list_objects("packages"):
             if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
                 web.header('Content-Type', 'application/json')
@@ -255,13 +274,18 @@ class PackageInstances:  # create / delete new package, list available package v
         else:
             return web.notfound("Application does not exist")
 
-    def PUT(self, package_name):
-        if pleasance.create_package(package_name):
-            return "Created package " + package_name
-        else:
-            return web.internalerror()
+    @staticmethod
+    def PUT(package_name):
+        try:
+            if pleasance.create_package(package_name):
+                return "Created package " + package_name
+            else:
+                return web.internalerror()
+        except pleasance.PackageIsPromotedError:
+            return web.forbidden()
 
-    def DELETE(self, package_name):
+    @staticmethod
+    def DELETE( package_name):
         try:
             if pleasance.delete_package(package_name):
                 return "Deleted package " + package_name
@@ -272,7 +296,8 @@ class PackageInstances:  # create / delete new package, list available package v
 
 
 class PackageInstancesInfo:
-    def GET(self, package_name):
+    @staticmethod
+    def GET(package_name):
         if package_name in pleasance.list_objects("packages"):
             package_versions_details = {}
             for package_version in sorted(pleasance.list_package_versions(package_name)):
@@ -302,21 +327,24 @@ class PackageInstancesInfo:
         else:
             return web.notfound("Application does not exist")
 
-    def PUT(self, _):
+    @staticmethod
+    def PUT(_):
         return web.nomethod()
 
-    def DELETE(self, _):
+    @staticmethod
+    def DELETE(_):
         return web.nomethod
 
 
 class PackageVersionPromote:  # Flag a package so that it shouldn't be cleaned up automatically
-    def GET(self, package_name, package_version):
+    def GET(self, package_name, package_version):  # Not RESTful. Still here for historical reasons.
         return self.promote_package_version(package_name, package_version)
 
     def POST(self, package_name, package_version):
         return self.promote_package_version(package_name, package_version)
 
-    def promote_package_version(self, package_name, package_version):
+    @staticmethod
+    def promote_package_version(package_name, package_version):
         try:
             if pleasance.set_promotion_flag(package_name, package_version, True):
                 return "Promoted " + package_name + " version " + package_version
@@ -333,7 +361,8 @@ class PackageVersionUnpromote:  # Flag a package for automatic deletion
     def POST(self, package_name, package_version):
         return self.unpromote_package_version(package_name, package_version)
 
-    def unpromote_package_version(self, package_name, package_version):
+    @staticmethod
+    def unpromote_package_version(package_name, package_version):
         try:
             if pleasance.set_promotion_flag(package_name, package_version, False):
                 return "Unpromoted " + package_name + " version " + package_version
@@ -344,7 +373,8 @@ class PackageVersionUnpromote:  # Flag a package for automatic deletion
 
 
 class PackageInstanceVersions:  # Create / Update / Delete given version of a package
-    def GET(self, package_name, package_version):
+    @staticmethod
+    def GET(package_name, package_version):
         try:
             (content_type, package_contents) = pleasance.retrieve_package_version(package_name, package_version)
             web.header('Content-Type', content_type)
@@ -355,7 +385,8 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
         except pleasance.CannotUpdatePackageError:
             return web.internalerror()
 
-    def PUT(self, package_name, package_version):
+    @staticmethod
+    def PUT(package_name, package_version):
         content_type = ''
         if web.ctx.env.get('CONTENT_TYPE'):
             content_type = web.ctx.env.get('CONTENT_TYPE')
@@ -364,7 +395,8 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
         except pleasance.PackageNotFoundError:
             return web.notfound()
 
-    def DELETE(self, package_name, package_version):
+    @staticmethod
+    def DELETE(package_name, package_version):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -386,7 +418,8 @@ class PackageInstanceVersions:  # Create / Update / Delete given version of a pa
 
 
 class PackageVersionInfo:
-    def GET(self, package_name, package_version):
+    @staticmethod
+    def GET(package_name, package_version):
         try:
             package_details = pleasance.retrieve_package_details(package_name, package_version)
             web.header('Content-Type', 'application/json')
@@ -396,7 +429,8 @@ class PackageVersionInfo:
 
 
 class PackageExportVersion:
-    def GET(self, package_name, package_version):
+    @staticmethod
+    def GET(package_name, package_version):
         try:
             package_details = pleasance.retrieve_package_details(package_name, package_version)
             (content_type, package_contents) = pleasance.retrieve_package_version(package_name, package_version)
@@ -413,7 +447,8 @@ class PackageExportVersion:
 
 
 class PackageImportVersion:
-    def POST(self):
+    @staticmethod
+    def POST():
         try:
             package_object = json.loads(zlib.decompress(web.data()))
             if not pleasance.create_package(package_object['name']):
@@ -429,10 +464,10 @@ class PackageImportVersion:
                            web.ctx.home + '/packages/' + package_object['name'] + '/' + package_object['version'])
                 return web.created()
         except pleasance.PackageIsPromotedError:
-            return web.HTTPError(self, '309 Conflict', 'Content-Type: text/plain',
-                                   'Cannot overwrite a promoted package')
+            return web.HTTPError(status='309 Conflict', headers={'Content-Type': 'text/plain'},
+                                 data='Cannot overwrite a promoted package')
         except (zlib.error, ValueError):
-            return web.internalerror('Could not decode package object')
+            return web.UnsupportedMediaType()
 
 
 ################################################################################
@@ -448,7 +483,8 @@ class PackageImportVersion:
 # Example URL: # /bootstrap/linux/eqc-pm-service-int/eqc-pm/1.0
 
 class BootStrap:
-    def GET(self):
+    @staticmethod
+    def GET():
         response = ''
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
             web.header('Content-Type', 'application/json')
@@ -463,7 +499,8 @@ class BootStrap:
 
 
 class BootstrapServer:
-    def GET(self, context):
+    @staticmethod
+    def GET(context):
         if context.lstrip('/').split('/').__len__() == 4:
             (platform, environment, application, application_version) = context.lstrip('/').split('/', 4)
             configuration_url = web.ctx.home + "/configuration/" + environment
@@ -489,7 +526,8 @@ class BootstrapServer:
         web.header('Content-Type', content_type)
         return bootstrap
 
-    def PUT(self, context):
+    @staticmethod
+    def PUT(context):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -511,7 +549,8 @@ class BootstrapServer:
                 return "Created bootstrap " + context
             raise Exception
 
-    def DELETE(self, context):
+    @staticmethod
+    def DELETE(context):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -537,7 +576,8 @@ class BootstrapServer:
 ################################################################################
 
 class Installers:
-    def GET(self):
+    @staticmethod
+    def GET():
         response = ''
         if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
             web.header('Content-Type', 'application/json')
@@ -553,7 +593,8 @@ class Installers:
 
 
 class InstallerInstances:
-    def GET(self, installer_name):
+    @staticmethod
+    def GET(installer_name):
         try:
             response = ''
             if 'HTTP_ACCEPT' in web.ctx.environ and web.ctx.environ['HTTP_ACCEPT'].startswith("application/json"):
@@ -569,14 +610,15 @@ class InstallerInstances:
             return response
         except pleasance.InstallerNotFoundError:
             return web.notfound()
-
-    def PUT(self, installer_name):
+    @staticmethod
+    def PUT(installer_name):
         if pleasance.create_installer(installer_name):
             return "Created installer " + installer_name
 
 
 class InstallerInstanceSpecific:
-    def GET(self, installer_name, target_os):
+    @staticmethod
+    def GET(installer_name, target_os):
         try:
             (content_type, installer_data) = pleasance.retrieve_installer_instance(installer_name, target_os)
             web.header('Content-Type', content_type)
@@ -584,7 +626,8 @@ class InstallerInstanceSpecific:
         except pleasance.InstallerInstanceNotFoundError:
             return web.notfound()
 
-    def PUT(self, installer_name, target_os):
+    @staticmethod
+    def PUT(installer_name, target_os):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = ''  # We need to initialise these to empty values in the case that auth is disabled
         password = ''
@@ -605,7 +648,8 @@ class InstallerInstanceSpecific:
         except pleasance.InstallerNotFoundError:
             return web.notfound()
 
-    def DELETE(self, installer_name, target_os):
+    @staticmethod
+    def DELETE(installer_name, target_os):
         try:
             if pleasance.delete_installer_specific(installer_name, target_os):
                 return "Deleted Installer for " + installer_name + " on platform: " + target_os
