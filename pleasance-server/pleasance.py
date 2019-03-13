@@ -150,7 +150,7 @@ class ConfigurationServiceInstanceHosts:  # Get / Update / Delete individual ser
             return web.notfound()
 
     @staticmethod
-    def PUT(self, instance_name, node_identifier):
+    def PUT(instance_name, node_identifier):
         auth = web.ctx.env.get('HTTP_AUTHORIZATION')
         username = '' # We need to initialise these to empty values in the case that auth is disabled
         password = ''
